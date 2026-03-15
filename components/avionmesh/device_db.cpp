@@ -255,6 +255,7 @@ void DeviceDB::set_passphrase(const std::string &passphrase) {
 }
 
 void DeviceDB::generate_passphrase() {
+#ifdef USE_ESP32
     /* Generate 16 random bytes and encode as base64 */
     uint8_t raw[16];
     for (size_t i = 0; i < sizeof(raw); i += 4) {
@@ -270,6 +271,7 @@ void DeviceDB::generate_passphrase() {
 
     passphrase_.assign(b64, out_len);
     save();
+#endif
 }
 
 }  // namespace avionmesh

@@ -70,6 +70,10 @@ std::string MqttDiscovery::management_response_topic() const {
 }
 
 void MqttDiscovery::publish_(const std::string &topic, const std::string &payload, bool retain) {
+    if (publish_fn_) {
+        publish_fn_(topic, payload, retain);
+        return;
+    }
 #ifdef USE_ESP32
     auto *mqtt = esphome::mqtt::global_mqtt_client;
     if (mqtt)

@@ -6,3 +6,4 @@ components/avionmesh/web_style.h
 components/avionmesh/web_script.h
 avionmesh.yaml
 secrets.yaml
+.esphome

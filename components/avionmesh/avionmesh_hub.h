@@ -10,6 +10,7 @@
 #include <recsrmesh/csrmesh.h>
 #include <avionmesh/avionmesh.h>
 
+#include <functional>
 #include <map>
 #include <mutex>
 #include <vector>
@@ -222,6 +223,15 @@ class AvionMeshHub : public esphome::Component,
     void read_all_dimming();
     void read_all_color();
     void publish_device_state(uint16_t avion_id);
+    void check_group_state_latch(uint16_t avid);
+
+    /* Virtual seams — overridden by TestHub in tests; default impls use real globals */
+    virtual void do_mesh_send(const Command &cmd);
+    virtual void do_mqtt_publish(const std::string &topic, const std::string &payload, bool retain);
+    virtual void do_mqtt_subscribe(const std::string &topic,
+                                   std::function<void(const std::string &,
+                                                       const std::string &)> cb);
+    virtual void do_sse_emit(const std::string &event, const std::string &data);
 };
 
 }  // namespace avionmesh
