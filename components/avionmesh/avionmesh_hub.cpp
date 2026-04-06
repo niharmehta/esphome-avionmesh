@@ -496,6 +496,11 @@ void AvionMeshHub::loop() {
         }
     }
 
+    if (mqtt_subscribed_ && !mqtt_state_restore_started_) {
+        mqtt_state_restore_started_ = true;
+        restore_state_from_mqtt();
+    }
+
     if (mqtt_subscribed_ && !initial_read_done_) {
         initial_read_done_ = true;
         this->set_timeout("initial_read", 2000, [this]() {
@@ -1515,6 +1520,130 @@ void AvionMeshHub::subscribe_all_commands() {
 
     mqtt_subscribed_ = true;
     ESP_LOGI(TAG, "MQTT subscriptions active");
+}
+
+void AvionMeshHub::restore_state_from_mqtt() {
+    auto *mqtt = esphome::mqtt::global_mqtt_client;
+    if (!mqtt)
+        return;
+
+    uint16_t count = 0;
+
+    auto subscribe_state = [this, mqtt, &count](uint16_t id) {
+        mqtt->subscribe(discovery_.state_topic(id),
+                        [this, id](const std::string &, const std::string &payload) {
+                            on_state_restore(id, payload);
+                        }, 0);
+        count++;
+    };
+
+    for (auto &dev : db_.devices()) {
+        if (!dev.mqtt_exposed)
+            continue;
+        subscribe_state(dev.avion_id);
+    }
+    for (auto &grp : db_.groups()) {
+        if (!grp.mqtt_exposed)
+            continue;
+        subscribe_state(grp.group_id);
+    }
+    if (mesh_mqtt_exposed_)
+        subscribe_state(0);
+
+    mqtt_state_restore_pending_ = count;
+    ESP_LOGI(TAG, "Subscribing to %u state topics for restore", count);
+
+    /* Unsubscribe after 2s — retained messages arrive immediately on subscribe,
+       so anything not received by then won't come. */
+    this->set_timeout("mqtt_restore_unsub", 2000, [this]() {
+        auto *mqtt = esphome::mqtt::global_mqtt_client;
+        if (!mqtt)
+            return;
+
+        for (auto &dev : db_.devices()) {
+            if (!dev.mqtt_exposed)
+                continue;
+            mqtt->unsubscribe(discovery_.state_topic(dev.avion_id));
+        }
+        for (auto &grp : db_.groups()) {
+            if (!grp.mqtt_exposed)
+                continue;
+            mqtt->unsubscribe(discovery_.state_topic(grp.group_id));
+        }
+        if (mesh_mqtt_exposed_)
+            mqtt->unsubscribe(discovery_.state_topic(0));
+
+        /* Publish default OFF for any exposed entity that has no state yet,
+           so HA never shows "Unknown". */
+        auto ensure_state = [this](uint16_t id, bool has_ct) {
+            if (device_states_.find(id) == device_states_.end()) {
+                auto &state = device_states_[id];
+                state.brightness = 0;
+                state.brightness_known = true;
+                publish_device_state(id);
+                ESP_LOGD(TAG, "Published default OFF for entity %u (no retained state)", id);
+            }
+        };
+        for (auto &dev : db_.devices()) {
+            if (!dev.mqtt_exposed)
+                continue;
+            ensure_state(dev.avion_id, has_color_temp(dev.product_type));
+        }
+        for (auto &grp : db_.groups()) {
+            if (!grp.mqtt_exposed)
+                continue;
+            ensure_state(grp.group_id, true);
+        }
+        if (mesh_mqtt_exposed_)
+            ensure_state(0, true);
+
+        ESP_LOGI(TAG, "MQTT state restore complete, unsubscribed from state topics");
+    });
+}
+
+void AvionMeshHub::on_state_restore(uint16_t avion_id, const std::string &payload) {
+    esphome::json::parse_json(payload, [this, avion_id](JsonObject root) -> bool {
+        auto &state = device_states_[avion_id];
+
+        std::string state_str = root["state"] | "";
+        if (root.containsKey("brightness")) {
+            state.brightness = root["brightness"];
+            state.brightness_known = true;
+        } else if (state_str == "ON") {
+            state.brightness = 255;
+            state.brightness_known = true;
+        } else if (state_str == "OFF") {
+            state.brightness = 0;
+            state.brightness_known = true;
+        }
+
+        if (root.containsKey("color_temp")) {
+            uint16_t mireds = root["color_temp"];
+            state.color_temp = mireds > 0 ? 1000000u / mireds : 0;
+            state.color_temp_known = true;
+        }
+
+        ESP_LOGD(TAG, "Restored state for %u: brightness=%u color_temp=%u",
+                 avion_id, state.brightness, state.color_temp);
+
+        /* Update web UI with restored state */
+        if (web_handler_) {
+            char buf[128];
+            int len;
+            if (state.color_temp_known) {
+                len = snprintf(buf, sizeof(buf),
+                               "{\"avion_id\":%u,\"brightness\":%u,\"color_temp\":%u}",
+                               avion_id, state.brightness, state.color_temp);
+            } else {
+                len = snprintf(buf, sizeof(buf),
+                               "{\"avion_id\":%u,\"brightness\":%u}",
+                               avion_id, state.brightness);
+            }
+            web_handler_->send_event("state", std::string(buf, len));
+        }
+
+        return true;
+    });
 }
 
 void AvionMeshHub::send_response(const std::string &payload) {

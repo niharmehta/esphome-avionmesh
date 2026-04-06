@@ -122,6 +122,8 @@ class AvionMeshHub : public esphome::Component,
     bool mesh_mqtt_exposed_{false};
     bool initial_read_done_{false};
     bool time_synced_{false};
+    bool mqtt_state_restore_started_{false};
+    uint16_t mqtt_state_restore_pending_{0};
 
     /* Mesh discovery state */
     bool discovering_mesh_{false};
@@ -217,6 +219,8 @@ class AvionMeshHub : public esphome::Component,
 
     void publish_all_discovery();
     void subscribe_all_commands();
+    void restore_state_from_mqtt();
+    void on_state_restore(uint16_t avion_id, const std::string &payload);
     void send_response(const std::string &payload);
     void sync_time();
     void read_all_dimming();
