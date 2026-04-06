@@ -58,6 +58,41 @@ void AvionMeshHub::setup() {
         db_.set_passphrase(passphrase_);
     }
 
+    /* auto_expose: one-shot enable mqtt_exposed on all entities after first import */
+    if (auto_expose_) {
+        bool already_ran = false;
+#ifdef USE_ESP32
+        {
+            nvs_handle_t handle;
+            if (nvs_open("avionmesh", NVS_READONLY, &handle) == ESP_OK) {
+                uint8_t val = 0;
+                if (nvs_get_u8(handle, "auto_exposed", &val) == ESP_OK)
+                    already_ran = val != 0;
+                nvs_close(handle);
+            }
+        }
+#endif
+        if (!already_ran && !db_.devices().empty()) {
+            for (auto &dev : db_.devices())
+                dev.mqtt_exposed = true;
+            for (auto &grp : db_.groups())
+                grp.mqtt_exposed = true;
+            mesh_mqtt_exposed_ = true;
+            db_.save();
+#ifdef USE_ESP32
+            {
+                nvs_handle_t handle;
+                if (nvs_open("avionmesh", NVS_READWRITE, &handle) == ESP_OK) {
+                    nvs_set_u8(handle, "auto_exposed", 1);
+                    nvs_commit(handle);
+                    nvs_close(handle);
+                }
+            }
+#endif
+            ESP_LOGI(TAG, "auto_expose: enabled mqtt_exposed on all entities (one-shot)");
+        }
+    }
+
     auto *mqtt = esphome::mqtt::global_mqtt_client;
     if (mqtt) {
         discovery_.set_node_name(esphome::App.get_name());
