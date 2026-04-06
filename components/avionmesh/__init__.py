@@ -20,6 +20,7 @@ AUTO_LOAD = ["json", "esp32_ble", "web_server_base"]
 
 CONF_PASSPHRASE = "passphrase"
 CONF_SINGLE_DEVICE = "single_device"
+CONF_AUTO_EXPOSE = "auto_expose"
 
 
 def validate_passphrase(value):
@@ -70,6 +71,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(esp32_ble.CONF_BLE_ID): cv.use_id(esp32_ble.ESP32BLE),
         cv.Optional(CONF_PASSPHRASE): validate_passphrase,
         cv.Optional(CONF_SINGLE_DEVICE, default=False): cv.boolean,
+        cv.Optional(CONF_AUTO_EXPOSE, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -89,6 +91,9 @@ async def to_code(config):
 
     if config[CONF_SINGLE_DEVICE]:
         cg.add(var.set_single_device(True))
+
+    if config[CONF_AUTO_EXPOSE]:
+        cg.add(var.set_auto_expose(True))
 
     # Download libraries via lib_deps (compiled via fix_cmake.py for ESP-IDF)
     cg.add_platformio_option("lib_deps", [

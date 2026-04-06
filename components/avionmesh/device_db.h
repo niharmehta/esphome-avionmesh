@@ -31,11 +31,13 @@ class DeviceDB {
     bool remove_device(uint16_t avion_id);
     DeviceEntry *find_device(uint16_t avion_id);
     const std::vector<DeviceEntry> &devices() const { return devices_; }
+    std::vector<DeviceEntry> &devices() { return devices_; }
 
     bool add_group(uint16_t group_id, const std::string &name);
     bool remove_group(uint16_t group_id);
     GroupEntry *find_group(uint16_t group_id);
     const std::vector<GroupEntry> &groups() const { return groups_; }
+    std::vector<GroupEntry> &groups() { return groups_; }
 
     bool add_device_to_group(uint16_t avion_id, uint16_t group_id);
     bool remove_device_from_group(uint16_t avion_id, uint16_t group_id);
