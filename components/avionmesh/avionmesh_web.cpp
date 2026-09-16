@@ -375,7 +375,33 @@ void AvionMeshWebHandler::handleRequest(AsyncWebServerRequest *request) {
     }
 }
 
+void AvionMeshWebHandler::handleBody(AsyncWebServerRequest * /*request*/, uint8_t *data, size_t len,
+                                     size_t index, size_t total) {
+    if (index == 0) {
+        body_buf_.clear();
+        body_too_big_ = total > 16384;
+        if (!body_too_big_)
+            body_buf_.reserve(total);
+    }
+    if (body_too_big_)
+        return;
+    body_buf_.append(reinterpret_cast<const char *>(data), len);
+}
+
 std::string AvionMeshWebHandler::read_body(AsyncWebServerRequest *request) {
+    // Newer ESPHome web_server_idf consumes the body and hands it to handleBody()
+    if (!body_buf_.empty() || body_too_big_) {
+        std::string body;
+        body.swap(body_buf_);
+        if (body_too_big_) {
+            body_too_big_ = false;
+            ESP_LOGW(TAG, "read_body: body exceeds 16KB limit");
+            return {};
+        }
+        ESP_LOGI(TAG, "read_body: %zu bytes via handleBody", body.size());
+        return body;
+    }
+
     httpd_req_t *req = *request;
     size_t len = req->content_len;
     ESP_LOGI(TAG, "read_body: content_len=%zu", len);

@@ -42,6 +42,9 @@ class AvionMeshWebHandler : public AsyncWebHandler {
 
     bool canHandle(AsyncWebServerRequest *request) const override;
     void handleRequest(AsyncWebServerRequest *request) override;
+    // ESPHome >= 2026.x delivers JSON POST bodies here before handleRequest()
+    void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index,
+                    size_t total) override;
 
     void send_event(const char *event, const std::string &data);
     void sse_loop();
@@ -54,6 +57,8 @@ class AvionMeshWebHandler : public AsyncWebHandler {
     uint32_t last_state_read_ms_{0};
 
     std::string read_body(AsyncWebServerRequest *request);
+    std::string body_buf_;
+    bool body_too_big_{false};
 
     void send_initial_sync(SseSession *session);
 
