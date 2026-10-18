@@ -1,0 +1,18 @@
+# Python tooling for this repo (ESPHome component codegen + tools/).
+# Firmware dependencies are declared by ESPHome itself; the import tool
+# (tools/avion_import.py) uses only the standard library.
+# Dev tools: pip install ruff pre-commit  (or use pipx)
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# ESPHome codegen modules rely on esphome.* imports provided at runtime.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# PlatformIO SCons script: Import/env are injected by SCons.
+"components/avionmesh/fix_cmake.py" = ["F821"]
+# ESPHome codegen runs in ESPHome's own event loop; sync file IO is the norm.
+"components/avionmesh/__init__.py" = ["ASYNC230"]

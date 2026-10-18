@@ -11,11 +11,12 @@ static constexpr uint16_t DEV = 32900;
 static const std::string PREFIX = "avionmesh";
 
 class MqttCommandTest : public ::testing::Test {
-protected:
+ protected:
     TestHub hub;
 
     void SetUp() override {
-        hub.db().add_device(DEV, 93 /* RecessedDL — has both dimming and color_temp */, "Test Light");
+        hub.db().add_device(DEV, 93 /* RecessedDL — has both dimming and color_temp */,
+                            "Test Light");
         hub.db().find_device(DEV)->mqtt_exposed = true;
         hub.test_setup();
         esphome::set_test_millis(1000);  // non-zero so rapid-dim window doesn't trigger

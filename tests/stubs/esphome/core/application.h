@@ -4,7 +4,7 @@
 namespace esphome {
 
 class Application {
-public:
+ public:
     std::string get_name() const { return "test"; }
 };
 

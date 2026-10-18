@@ -23,14 +23,10 @@ static const char *TAG = "avionmesh";
 static constexpr uint16_t CSRMESH_SERVICE_UUID16 = 0xFEF1;
 
 /* CSRMesh characteristic UUIDs (128-bit) */
-static const uint8_t CHAR_LOW_UUID128[16] = {
-    0x00, 0x0b, 0x00, 0x5b, 0x02, 0x00, 0x03, 0x80,
-    0xe3, 0x11, 0xaf, 0x9d, 0x00, 0xc0, 0xed, 0xc4
-};
-static const uint8_t CHAR_HIGH_UUID128[16] = {
-    0x00, 0x0b, 0x00, 0x5b, 0x02, 0x00, 0x04, 0x80,
-    0xe3, 0x11, 0xaf, 0x9d, 0x00, 0xc0, 0xed, 0xc4
-};
+static const uint8_t CHAR_LOW_UUID128[16] = {0x00, 0x0b, 0x00, 0x5b, 0x02, 0x00, 0x03, 0x80,
+                                             0xe3, 0x11, 0xaf, 0x9d, 0x00, 0xc0, 0xed, 0xc4};
+static const uint8_t CHAR_HIGH_UUID128[16] = {0x00, 0x0b, 0x00, 0x5b, 0x02, 0x00, 0x04, 0x80,
+                                              0xe3, 0x11, 0xaf, 0x9d, 0x00, 0xc0, 0xed, 0xc4};
 
 namespace avionmesh {
 
@@ -66,9 +62,8 @@ void AvionMeshHub::setup() {
         discovery_.set_node_name(esphome::App.get_name());
         discovery_.set_topic_prefix(mqtt->get_topic_prefix());
     }
-    discovery_.set_publish_fn([this](const std::string &t, const std::string &p, bool r) {
-        do_mqtt_publish(t, p, r);
-    });
+    discovery_.set_publish_fn(
+        [this](const std::string &t, const std::string &p, bool r) { do_mqtt_publish(t, p, r); });
 
     /* Initialize csrmesh crypto if passphrase exists */
     if (!db_.passphrase().empty()) {
@@ -77,13 +72,12 @@ void AvionMeshHub::setup() {
             return;
         }
     } else {
-        ESP_LOGW(TAG, "No passphrase set - mesh operations disabled until passphrase is configured");
+        ESP_LOGW(TAG,
+                 "No passphrase set - mesh operations disabled until passphrase is configured");
     }
 
     /* Daily time sync */
-    this->set_interval("time_sync", 24 * 60 * 60 * 1000, [this]() {
-        sync_time();
-    });
+    this->set_interval("time_sync", 24 * 60 * 60 * 1000, [this]() { sync_time(); });
 
     /* Re-publish discovery when HA comes online */
     do_mqtt_subscribe("homeassistant/status",
@@ -96,8 +90,8 @@ void AvionMeshHub::setup() {
 
     /* Register web UI handler — deferred to loop() after web server is ready */
 
-    ESP_LOGI(TAG, "AvionMesh hub initialized with %zu devices, %zu groups",
-             db_.devices().size(), db_.groups().size());
+    ESP_LOGI(TAG, "AvionMesh hub initialized with %zu devices, %zu groups", db_.devices().size(),
+             db_.groups().size());
 }
 
 void AvionMeshHub::dump_config() {
@@ -112,26 +106,24 @@ void AvionMeshHub::dump_config() {
 
 /* ---- GAP event handler (dispatched by esp32_ble) ---- */
 
-void AvionMeshHub::gap_event_handler(esp_gap_ble_cb_event_t event,
-                                      esp_ble_gap_cb_param_t *param) {
+void AvionMeshHub::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
     switch (event) {
-    case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
-        if (param->scan_param_cmpl.status == ESP_BT_STATUS_SUCCESS) {
-            esp_ble_gap_start_scanning(SCAN_WINDOW_MS / 1000);
-        } else {
-            ESP_LOGE(TAG, "Scan param set failed: %d", param->scan_param_cmpl.status);
-            ble_state_ = BleState::Disconnected;
-            reconnect_at_ms_ = esphome::millis() + RECONNECT_DELAY_MS;
-        }
-        break;
+        case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
+            if (param->scan_param_cmpl.status == ESP_BT_STATUS_SUCCESS) {
+                esp_ble_gap_start_scanning(SCAN_WINDOW_MS / 1000);
+            } else {
+                ESP_LOGE(TAG, "Scan param set failed: %d", param->scan_param_cmpl.status);
+                ble_state_ = BleState::Disconnected;
+                reconnect_at_ms_ = esphome::millis() + RECONNECT_DELAY_MS;
+            }
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 
-void AvionMeshHub::gap_scan_event_handler(
-        const esphome::esp32_ble::BLEScanResult &result) {
+void AvionMeshHub::gap_scan_event_handler(const esphome::esp32_ble::BLEScanResult &result) {
     if (result.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT) {
         ESP_LOGD(TAG, "Scan complete");
         stop_scan_and_connect();
@@ -163,10 +155,9 @@ void AvionMeshHub::gap_scan_event_handler(
                 uint16_t uuid16 = field_data[i] | (field_data[i + 1] << 8);
                 if (uuid16 == CSRMESH_SERVICE_UUID16) {
                     char addr_str[18];
-                    snprintf(addr_str, sizeof(addr_str),
-                             "%02X:%02X:%02X:%02X:%02X:%02X",
-                             result.bda[0], result.bda[1], result.bda[2],
-                             result.bda[3], result.bda[4], result.bda[5]);
+                    snprintf(addr_str, sizeof(addr_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+                             result.bda[0], result.bda[1], result.bda[2], result.bda[3],
+                             result.bda[4], result.bda[5]);
                     ESP_LOGD(TAG, "CSRMesh bridge: %s RSSI=%d", addr_str, result.rssi);
 
                     if (result.rssi > best_rssi_) {
@@ -216,9 +207,8 @@ void AvionMeshHub::connect_to_best() {
     }
 
     char addr_str[18];
-    snprintf(addr_str, sizeof(addr_str), "%02X:%02X:%02X:%02X:%02X:%02X",
-             bridge_bda_[0], bridge_bda_[1], bridge_bda_[2],
-             bridge_bda_[3], bridge_bda_[4], bridge_bda_[5]);
+    snprintf(addr_str, sizeof(addr_str), "%02X:%02X:%02X:%02X:%02X:%02X", bridge_bda_[0],
+             bridge_bda_[1], bridge_bda_[2], bridge_bda_[3], bridge_bda_[4], bridge_bda_[5]);
     ESP_LOGI(TAG, "Connecting to best bridge: %s (RSSI=%d)", addr_str, best_rssi_);
 
     ble_state_ = BleState::Connecting;
@@ -227,89 +217,88 @@ void AvionMeshHub::connect_to_best() {
 
 /* ---- GATTC event handler (dispatched by esp32_ble) ---- */
 
-void AvionMeshHub::gattc_event_handler(esp_gattc_cb_event_t event,
-                                        esp_gatt_if_t gattc_if,
-                                        esp_ble_gattc_cb_param_t *param) {
+void AvionMeshHub::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
+                                       esp_ble_gattc_cb_param_t *param) {
     switch (event) {
-    case ESP_GATTC_REG_EVT:
-        if (param->reg.status == ESP_GATT_OK) {
-            gattc_if_ = gattc_if;
-            gattc_registered_ = true;
-            app_id_ = param->reg.app_id;
-            ESP_LOGI(TAG, "GATTC registered, starting scan");
-            start_scan();
-        }
-        break;
+        case ESP_GATTC_REG_EVT:
+            if (param->reg.status == ESP_GATT_OK) {
+                gattc_if_ = gattc_if;
+                gattc_registered_ = true;
+                app_id_ = param->reg.app_id;
+                ESP_LOGI(TAG, "GATTC registered, starting scan");
+                start_scan();
+            }
+            break;
 
-    case ESP_GATTC_OPEN_EVT:
-        if (param->open.status == ESP_GATT_OK) {
-            on_connected(gattc_if, param->open.conn_id);
-        } else {
-            ESP_LOGW(TAG, "BLE connection failed: %d, will retry", param->open.status);
+        case ESP_GATTC_OPEN_EVT:
+            if (param->open.status == ESP_GATT_OK) {
+                on_connected(gattc_if, param->open.conn_id);
+            } else {
+                ESP_LOGW(TAG, "BLE connection failed: %d, will retry", param->open.status);
+                on_disconnected();
+            }
+            break;
+
+        case ESP_GATTC_SEARCH_CMPL_EVT:
+            on_service_discovery_complete();
+            break;
+
+        case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
+            ESP_LOGI(TAG, "REG_FOR_NOTIFY handle=0x%04X status=%d", param->reg_for_notify.handle,
+                     param->reg_for_notify.status);
+            if (param->reg_for_notify.status != ESP_GATT_OK)
+                break;
+
+            /* Write CCCD to actually enable notifications on the remote device */
+            esp_bt_uuid_t cccd_uuid = {.len = ESP_UUID_LEN_16,
+                                       .uuid = {.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG}};
+            esp_gattc_descr_elem_t desc_result;
+            uint16_t count = 1;
+            auto err = esp_ble_gattc_get_descr_by_char_handle(
+                gattc_if, conn_id_, param->reg_for_notify.handle, cccd_uuid, &desc_result, &count);
+            if (err != ESP_GATT_OK || count == 0) {
+                ESP_LOGW(TAG, "CCCD not found for handle 0x%04X (err=%d)",
+                         param->reg_for_notify.handle, err);
+                break;
+            }
+
+            uint16_t notify_en = 1;
+            esp_ble_gattc_write_char_descr(gattc_if, conn_id_, desc_result.handle,
+                                           sizeof(notify_en), (uint8_t *)&notify_en,
+                                           ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+            ESP_LOGI(TAG, "Wrote CCCD for handle 0x%04X (desc=0x%04X)",
+                     param->reg_for_notify.handle, desc_result.handle);
+            break;
+        }
+
+        case ESP_GATTC_NOTIFY_EVT: {
+            ESP_LOGD(TAG, "NOTIFY handle=0x%04X len=%u", param->notify.handle,
+                     param->notify.value_len);
+
+            if (!mesh_initialized_ || ble_state_ != BleState::Ready)
+                break;
+
+            uint16_t handle = param->notify.handle;
+            csrmesh::Characteristic ch;
+            if (handle == char_low_handle_)
+                ch = csrmesh::Characteristic::Low;
+            else if (handle == char_high_handle_)
+                ch = csrmesh::Characteristic::High;
+            else
+                break;
+
+            csrmesh::feed_notify(mesh_ctx_, ch, param->notify.value, param->notify.value_len,
+                                 esphome::millis());
+            break;
+        }
+
+        case ESP_GATTC_DISCONNECT_EVT:
+            ESP_LOGW(TAG, "BLE disconnected (reason=%d)", param->disconnect.reason);
             on_disconnected();
-        }
-        break;
-
-    case ESP_GATTC_SEARCH_CMPL_EVT:
-        on_service_discovery_complete();
-        break;
-
-    case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
-        ESP_LOGI(TAG, "REG_FOR_NOTIFY handle=0x%04X status=%d",
-                 param->reg_for_notify.handle, param->reg_for_notify.status);
-        if (param->reg_for_notify.status != ESP_GATT_OK)
             break;
 
-        /* Write CCCD to actually enable notifications on the remote device */
-        esp_bt_uuid_t cccd_uuid = {.len = ESP_UUID_LEN_16, .uuid = {.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG}};
-        esp_gattc_descr_elem_t desc_result;
-        uint16_t count = 1;
-        auto err = esp_ble_gattc_get_descr_by_char_handle(
-            gattc_if, conn_id_, param->reg_for_notify.handle, cccd_uuid, &desc_result, &count);
-        if (err != ESP_GATT_OK || count == 0) {
-            ESP_LOGW(TAG, "CCCD not found for handle 0x%04X (err=%d)",
-                     param->reg_for_notify.handle, err);
+        default:
             break;
-        }
-
-        uint16_t notify_en = 1;
-        esp_ble_gattc_write_char_descr(gattc_if, conn_id_, desc_result.handle,
-                                        sizeof(notify_en), (uint8_t *)&notify_en,
-                                        ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
-        ESP_LOGI(TAG, "Wrote CCCD for handle 0x%04X (desc=0x%04X)",
-                 param->reg_for_notify.handle, desc_result.handle);
-        break;
-    }
-
-    case ESP_GATTC_NOTIFY_EVT: {
-        ESP_LOGD(TAG, "NOTIFY handle=0x%04X len=%u",
-                 param->notify.handle, param->notify.value_len);
-
-        if (!mesh_initialized_ || ble_state_ != BleState::Ready)
-            break;
-
-        uint16_t handle = param->notify.handle;
-        csrmesh::Characteristic ch;
-        if (handle == char_low_handle_)
-            ch = csrmesh::Characteristic::Low;
-        else if (handle == char_high_handle_)
-            ch = csrmesh::Characteristic::High;
-        else
-            break;
-
-        csrmesh::feed_notify(mesh_ctx_, ch,
-                              param->notify.value, param->notify.value_len,
-                              esphome::millis());
-        break;
-    }
-
-    case ESP_GATTC_DISCONNECT_EVT:
-        ESP_LOGW(TAG, "BLE disconnected (reason=%d)", param->disconnect.reason);
-        on_disconnected();
-        break;
-
-    default:
-        break;
     }
 }
 
@@ -329,8 +318,9 @@ void AvionMeshHub::on_service_discovery_complete() {
     low_uuid.len = ESP_UUID_LEN_128;
     std::memcpy(low_uuid.uuid.uuid128, CHAR_LOW_UUID128, 16);
     count = 1;
-    if (esp_ble_gattc_get_char_by_uuid(gattc_if_, conn_id_, 0x0001, 0xFFFF,
-                                         low_uuid, &result, &count) == ESP_OK && count > 0) {
+    if (esp_ble_gattc_get_char_by_uuid(gattc_if_, conn_id_, 0x0001, 0xFFFF, low_uuid, &result,
+                                       &count) == ESP_OK &&
+        count > 0) {
         char_low_handle_ = result.char_handle;
     }
 
@@ -338,14 +328,15 @@ void AvionMeshHub::on_service_discovery_complete() {
     high_uuid.len = ESP_UUID_LEN_128;
     std::memcpy(high_uuid.uuid.uuid128, CHAR_HIGH_UUID128, 16);
     count = 1;
-    if (esp_ble_gattc_get_char_by_uuid(gattc_if_, conn_id_, 0x0001, 0xFFFF,
-                                         high_uuid, &result, &count) == ESP_OK && count > 0) {
+    if (esp_ble_gattc_get_char_by_uuid(gattc_if_, conn_id_, 0x0001, 0xFFFF, high_uuid, &result,
+                                       &count) == ESP_OK &&
+        count > 0) {
         char_high_handle_ = result.char_handle;
     }
 
     if (char_low_handle_ && char_high_handle_) {
-        ESP_LOGI(TAG, "Found characteristics: LOW=0x%04X HIGH=0x%04X",
-                 char_low_handle_, char_high_handle_);
+        ESP_LOGI(TAG, "Found characteristics: LOW=0x%04X HIGH=0x%04X", char_low_handle_,
+                 char_high_handle_);
 
         esp_ble_gattc_register_for_notify(gattc_if_, bridge_bda_, char_low_handle_);
         esp_ble_gattc_register_for_notify(gattc_if_, bridge_bda_, char_high_handle_);
@@ -388,10 +379,8 @@ bool AvionMeshHub::init_crypto() {
         return false;
     }
 
-    auto ble_write_fn = [this](csrmesh::Characteristic ch, const uint8_t *data,
-                               size_t len, bool response) -> int {
-        return ble_write(ch, data, len, response);
-    };
+    auto ble_write_fn = [this](csrmesh::Characteristic ch, const uint8_t *data, size_t len,
+                               bool response) -> int { return ble_write(ch, data, len, response); };
 
     auto err = csrmesh::init(mesh_ctx_, ble_write_fn, db_.passphrase().c_str());
     if (err != csrmesh::Error::Ok) {
@@ -399,11 +388,11 @@ bool AvionMeshHub::init_crypto() {
         return false;
     }
 
-    csrmesh::set_rx_callback(mesh_ctx_, [this](uint16_t mcp_source, uint16_t crypto_source,
-                                                uint8_t opcode, const uint8_t *payload,
-                                                size_t payload_len) {
-        on_mesh_rx(mcp_source, crypto_source, opcode, payload, payload_len);
-    });
+    csrmesh::set_rx_callback(
+        mesh_ctx_, [this](uint16_t mcp_source, uint16_t crypto_source, uint8_t opcode,
+                          const uint8_t *payload, size_t payload_len) {
+            on_mesh_rx(mcp_source, crypto_source, opcode, payload, payload_len);
+        });
 
     crypto_initialized_ = true;
     ESP_LOGI(TAG, "CSRMesh crypto initialized");
@@ -418,17 +407,14 @@ void AvionMeshHub::update_mesh_initialized() {
     if (mesh_initialized_ && !was_initialized) {
         ESP_LOGI(TAG, "Mesh is now fully operational");
     } else if (!mesh_initialized_ && was_initialized) {
-        ESP_LOGI(TAG, "Mesh is no longer operational (crypto=%d, ble=%d)",
-                 crypto_initialized_, static_cast<int>(ble_state_));
+        ESP_LOGI(TAG, "Mesh is no longer operational (crypto=%d, ble=%d)", crypto_initialized_,
+                 static_cast<int>(ble_state_));
     }
 
     if (mesh_initialized_ != was_initialized) {
         char buf[128];
-        snprintf(buf, sizeof(buf),
-                 "{\"ble_state\":%u,\"mesh_initialized\":%s,\"rx_count\":%u}",
-                 static_cast<uint8_t>(ble_state_),
-                 mesh_initialized_ ? "true" : "false",
-                 rx_count_);
+        snprintf(buf, sizeof(buf), "{\"ble_state\":%u,\"mesh_initialized\":%s,\"rx_count\":%u}",
+                 static_cast<uint8_t>(ble_state_), mesh_initialized_ ? "true" : "false", rx_count_);
         do_sse_emit("meta", buf);
     }
 }
@@ -477,8 +463,7 @@ void AvionMeshHub::loop() {
         esp_ble_gattc_app_register(0);
     }
 
-    if (ble_state_ == BleState::Disconnected &&
-        esphome::millis() >= reconnect_at_ms_) {
+    if (ble_state_ == BleState::Disconnected && esphome::millis() >= reconnect_at_ms_) {
         start_scan();
     }
 
@@ -508,17 +493,13 @@ void AvionMeshHub::loop() {
         initial_read_done_ = true;
         this->set_timeout("initial_read", 2000, [this]() {
             read_all_dimming();
-            this->set_timeout("initial_color_read", 1000, [this]() {
-                read_all_color();
-            });
+            this->set_timeout("initial_color_read", 1000, [this]() { read_all_color(); });
         });
     }
 
     if (mqtt_subscribed_ && !time_synced_) {
         time_synced_ = true;
-        this->set_timeout("initial_time_sync", 5000, [this]() {
-            sync_time();
-        });
+        this->set_timeout("initial_time_sync", 5000, [this]() { sync_time(); });
     }
 
     csrmesh::poll(mesh_ctx_, esphome::millis());
@@ -543,7 +524,8 @@ void AvionMeshHub::loop() {
                      csrmesh::protocol::state_name(proto_ctx_.state));
             associating_ = false;
             csrmesh::associate_cancel(mesh_ctx_);
-            send_response("{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"timeout\"}");
+            send_response(
+                "{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"timeout\"}");
         }
     }
 }
@@ -561,320 +543,323 @@ void AvionMeshHub::process_deferred_actions() {
 
     for (auto &act : actions) {
         switch (act.type) {
-        case DeferredAction::Control:
-            if (act.brightness >= 0) {
-                Command cmd;
-                cmd_brightness(act.id1, static_cast<uint8_t>(act.brightness), cmd);
-                do_mesh_send(cmd);
-                auto &state = device_states_[act.id1];
-                state.brightness = static_cast<uint8_t>(act.brightness);
-                state.brightness_known = true;
-                publish_device_state(act.id1);
-            }
-            if (act.color_temp > 0) {
-                Command cmd;
-                cmd_color_temp(act.id1, static_cast<uint16_t>(act.color_temp), cmd);
-                do_mesh_send(cmd);
-                auto &state = device_states_[act.id1];
-                state.color_temp = static_cast<uint16_t>(act.color_temp);
-                state.color_temp_known = true;
-                publish_device_state(act.id1);
-            }
-            break;
-
-        case DeferredAction::AddDiscovered:
-            handle_add_discovered(act.id1, act.name, act.product_type);
-            {
-                auto *dev = db_.find_device(act.id1);
-                if (dev) {
-                    std::string json = "{\"avion_id\":";
-                    json += std::to_string(dev->avion_id);
-                    json += ",\"name\":\"";
-                    json += dev->name;
-                    json += "\",\"product_type\":";
-                    json += std::to_string(dev->product_type);
-                    json += ",\"product_name\":\"";
-                    json += product_name(dev->product_type);
-                    json += "\",\"groups\":[],\"mqtt_exposed\":false}";
-                    do_sse_emit("device_added", json);
+            case DeferredAction::Control:
+                if (act.brightness >= 0) {
+                    Command cmd;
+                    cmd_brightness(act.id1, static_cast<uint8_t>(act.brightness), cmd);
+                    do_mesh_send(cmd);
+                    auto &state = device_states_[act.id1];
+                    state.brightness = static_cast<uint8_t>(act.brightness);
+                    state.brightness_known = true;
+                    publish_device_state(act.id1);
                 }
-            }
-            break;
+                if (act.color_temp > 0) {
+                    Command cmd;
+                    cmd_color_temp(act.id1, static_cast<uint16_t>(act.color_temp), cmd);
+                    do_mesh_send(cmd);
+                    auto &state = device_states_[act.id1];
+                    state.color_temp = static_cast<uint16_t>(act.color_temp);
+                    state.color_temp_known = true;
+                    publish_device_state(act.id1);
+                }
+                break;
 
-        case DeferredAction::UnclaimDevice:
-            handle_unclaim_device(act.id1);
-            {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "{\"avion_id\":%u}", act.id1);
-                do_sse_emit("device_removed", buf);
-            }
-            break;
+            case DeferredAction::AddDiscovered:
+                handle_add_discovered(act.id1, act.name, act.product_type);
+                {
+                    auto *dev = db_.find_device(act.id1);
+                    if (dev) {
+                        std::string json = "{\"avion_id\":";
+                        json += std::to_string(dev->avion_id);
+                        json += ",\"name\":\"";
+                        json += dev->name;
+                        json += "\",\"product_type\":";
+                        json += std::to_string(dev->product_type);
+                        json += ",\"product_name\":\"";
+                        json += product_name(dev->product_type);
+                        json += "\",\"groups\":[],\"mqtt_exposed\":false}";
+                        do_sse_emit("device_added", json);
+                    }
+                }
+                break;
 
-        case DeferredAction::CreateGroup: {
-            uint16_t group_id = next_group_id();
-            if (group_id != 0) {
-                handle_create_group(group_id, act.name);
-                std::string json = "{\"group_id\":";
-                json += std::to_string(group_id);
-                json += ",\"name\":\"";
-                json += act.name;
-                json += "\",\"members\":[],\"mqtt_exposed\":false}";
-                do_sse_emit("group_added", json);
-            }
-            break;
-        }
+            case DeferredAction::UnclaimDevice:
+                handle_unclaim_device(act.id1);
+                {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "{\"avion_id\":%u}", act.id1);
+                    do_sse_emit("device_removed", buf);
+                }
+                break;
 
-        case DeferredAction::DeleteGroup:
-            handle_delete_group(act.id1);
-            {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "{\"group_id\":%u}", act.id1);
-                do_sse_emit("group_removed", buf);
-            }
-            break;
-
-        case DeferredAction::AddToGroup:
-            handle_add_to_group(act.id1, act.id2);
-            {
-                auto *grp = db_.find_group(act.id2);
-                if (grp) {
+            case DeferredAction::CreateGroup: {
+                uint16_t group_id = next_group_id();
+                if (group_id != 0) {
+                    handle_create_group(group_id, act.name);
                     std::string json = "{\"group_id\":";
-                    json += std::to_string(grp->group_id);
+                    json += std::to_string(group_id);
                     json += ",\"name\":\"";
-                    json += grp->name;
-                    json += "\",\"members\":[";
-                    for (size_t i = 0; i < grp->member_ids.size(); i++) {
-                        if (i > 0) json += ",";
-                        json += std::to_string(grp->member_ids[i]);
-                    }
-                    json += "]}";
-                    do_sse_emit("group_updated", json);
+                    json += act.name;
+                    json += "\",\"members\":[],\"mqtt_exposed\":false}";
+                    do_sse_emit("group_added", json);
                 }
+                break;
             }
-            break;
 
-        case DeferredAction::RemoveFromGroup:
-            handle_remove_from_group(act.id1, act.id2);
-            {
-                auto *grp = db_.find_group(act.id2);
-                if (grp) {
-                    std::string json = "{\"group_id\":";
-                    json += std::to_string(grp->group_id);
-                    json += ",\"name\":\"";
-                    json += grp->name;
-                    json += "\",\"members\":[";
-                    for (size_t i = 0; i < grp->member_ids.size(); i++) {
-                        if (i > 0) json += ",";
-                        json += std::to_string(grp->member_ids[i]);
+            case DeferredAction::DeleteGroup:
+                handle_delete_group(act.id1);
+                {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "{\"group_id\":%u}", act.id1);
+                    do_sse_emit("group_removed", buf);
+                }
+                break;
+
+            case DeferredAction::AddToGroup:
+                handle_add_to_group(act.id1, act.id2);
+                {
+                    auto *grp = db_.find_group(act.id2);
+                    if (grp) {
+                        std::string json = "{\"group_id\":";
+                        json += std::to_string(grp->group_id);
+                        json += ",\"name\":\"";
+                        json += grp->name;
+                        json += "\",\"members\":[";
+                        for (size_t i = 0; i < grp->member_ids.size(); i++) {
+                            if (i > 0)
+                                json += ",";
+                            json += std::to_string(grp->member_ids[i]);
+                        }
+                        json += "]}";
+                        do_sse_emit("group_updated", json);
                     }
-                    json += "]}";
-                    do_sse_emit("group_updated", json);
                 }
-            }
-            break;
+                break;
 
-        case DeferredAction::Import: {
-            int added_devices = 0, added_groups = 0;
-            esphome::json::parse_json(act.body, [&](JsonObject root) -> bool {
-                if (root["reset"] | false) {
-                    ESP_LOGI(TAG, "Import with reset: clearing existing data");
-                    for (auto &dev : db_.devices())
-                        discovery_.remove_light(dev.avion_id);
-                    for (auto &grp : db_.groups())
-                        discovery_.remove_light(grp.group_id);
-                    db_.clear();
-                    db_.load();
-                    device_states_.clear();
-                }
-
-                if (root["passphrase"].is<const char *>()) {
-                    std::string passphrase = root["passphrase"].as<std::string>();
-                    ESP_LOGI(TAG, "Setting passphrase from import (len=%zu)", passphrase.size());
-                    db_.set_passphrase(passphrase);
-                    crypto_initialized_ = false;
-                    mesh_initialized_ = false;
-                    if (!init_crypto()) {
-                        ESP_LOGE(TAG, "Failed to initialize crypto with imported passphrase");
-                        return true;
+            case DeferredAction::RemoveFromGroup:
+                handle_remove_from_group(act.id1, act.id2);
+                {
+                    auto *grp = db_.find_group(act.id2);
+                    if (grp) {
+                        std::string json = "{\"group_id\":";
+                        json += std::to_string(grp->group_id);
+                        json += ",\"name\":\"";
+                        json += grp->name;
+                        json += "\",\"members\":[";
+                        for (size_t i = 0; i < grp->member_ids.size(); i++) {
+                            if (i > 0)
+                                json += ",";
+                            json += std::to_string(grp->member_ids[i]);
+                        }
+                        json += "]}";
+                        do_sse_emit("group_updated", json);
                     }
-                    ESP_LOGI(TAG, "Crypto initialized with imported passphrase");
                 }
+                break;
 
-                JsonArray devices = root["devices"];
-                for (JsonObject dev : devices) {
-                    uint16_t device_id = dev["device_id"] | 0u;
-                    std::string name = dev["name"] | "Unknown";
-                    uint8_t product_type = dev["product_type"] | 0u;
-                    if (device_id == 0) continue;
-                    if (db_.find_device(device_id)) continue;
-
-                    db_.add_device(device_id, product_type, name);
-                    added_devices++;
-                }
-
-                JsonArray groups = root["groups"];
-                for (JsonObject grp : groups) {
-                    uint16_t group_id = grp["group_id"] | 0u;
-                    std::string gname = grp["name"] | "Group";
-                    if (group_id == 0) continue;
-                    if (!db_.find_group(group_id)) {
-                        db_.add_group(group_id, gname);
-                        added_groups++;
+            case DeferredAction::Import: {
+                int added_devices = 0, added_groups = 0;
+                esphome::json::parse_json(act.body, [&](JsonObject root) -> bool {
+                    if (root["reset"] | false) {
+                        ESP_LOGI(TAG, "Import with reset: clearing existing data");
+                        for (auto &dev : db_.devices())
+                            discovery_.remove_light(dev.avion_id);
+                        for (auto &grp : db_.groups())
+                            discovery_.remove_light(grp.group_id);
+                        db_.clear();
+                        db_.load();
+                        device_states_.clear();
                     }
 
-                    JsonArray members = grp["members"];
-                    for (JsonVariant m : members) {
-                        uint16_t member_id = m.as<uint16_t>();
-                        if (member_id > 0) {
-                            db_.add_device_to_group(member_id, group_id);
-                            Command cmd;
-                            cmd_insert_group(member_id, group_id, cmd);
-                            do_mesh_send(cmd);
+                    if (root["passphrase"].is<const char *>()) {
+                        std::string passphrase = root["passphrase"].as<std::string>();
+                        ESP_LOGI(TAG, "Setting passphrase from import (len=%zu)",
+                                 passphrase.size());
+                        db_.set_passphrase(passphrase);
+                        crypto_initialized_ = false;
+                        mesh_initialized_ = false;
+                        if (!init_crypto()) {
+                            ESP_LOGE(TAG, "Failed to initialize crypto with imported passphrase");
+                            return true;
+                        }
+                        ESP_LOGI(TAG, "Crypto initialized with imported passphrase");
+                    }
+
+                    JsonArray devices = root["devices"];
+                    for (JsonObject dev : devices) {
+                        uint16_t device_id = dev["device_id"] | 0u;
+                        std::string name = dev["name"] | "Unknown";
+                        uint8_t product_type = dev["product_type"] | 0u;
+                        if (device_id == 0)
+                            continue;
+                        if (db_.find_device(device_id))
+                            continue;
+
+                        db_.add_device(device_id, product_type, name);
+                        added_devices++;
+                    }
+
+                    JsonArray groups = root["groups"];
+                    for (JsonObject grp : groups) {
+                        uint16_t group_id = grp["group_id"] | 0u;
+                        std::string gname = grp["name"] | "Group";
+                        if (group_id == 0)
+                            continue;
+                        if (!db_.find_group(group_id)) {
+                            db_.add_group(group_id, gname);
+                            added_groups++;
+                        }
+
+                        JsonArray members = grp["members"];
+                        for (JsonVariant m : members) {
+                            uint16_t member_id = m.as<uint16_t>();
+                            if (member_id > 0) {
+                                db_.add_device_to_group(member_id, group_id);
+                                Command cmd;
+                                cmd_insert_group(member_id, group_id, cmd);
+                                do_mesh_send(cmd);
+                            }
                         }
                     }
+                    return true;
+                });
+
+                publish_all_discovery();
+                subscribe_all_commands();
+
+                {
+                    char buf[96];
+                    snprintf(buf, sizeof(buf), "{\"added_devices\":%d,\"added_groups\":%d}",
+                             added_devices, added_groups);
+                    do_sse_emit("import_result", buf);
                 }
-                return true;
-            });
-
-            publish_all_discovery();
-            subscribe_all_commands();
-
-            {
-                char buf[96];
-                snprintf(buf, sizeof(buf),
-                         "{\"added_devices\":%d,\"added_groups\":%d}",
-                         added_devices, added_groups);
-                do_sse_emit("import_result", buf);
-            }
 #ifdef USE_ESP32
-            if (web_handler_)
-                web_handler_->reset_sync();
+                if (web_handler_)
+                    web_handler_->reset_sync();
 #endif
-            break;
-        }
-
-        case DeferredAction::SetMqttExposed: {
-            uint16_t id = act.id1;
-            bool exposed = act.id2 != 0;
-
-            if (id == 0) {
-                /* Mesh broadcast entity */
-                mesh_mqtt_exposed_ = exposed;
-            } else {
-                auto *dev = db_.find_device(id);
-                auto *grp = db_.find_group(id);
-                if (dev)
-                    dev->mqtt_exposed = exposed;
-                else if (grp)
-                    grp->mqtt_exposed = exposed;
-                else
-                    break;
+                break;
             }
 
-            if (exposed) {
+            case DeferredAction::SetMqttExposed: {
+                uint16_t id = act.id1;
+                bool exposed = act.id2 != 0;
+
                 if (id == 0) {
-                    discovery_.publish_light(0, "All Lights", true, true, "Mesh Broadcast");
+                    /* Mesh broadcast entity */
+                    mesh_mqtt_exposed_ = exposed;
                 } else {
                     auto *dev = db_.find_device(id);
-                    if (dev) {
-                        discovery_.publish_light(id, dev->name,
-                                                  has_dimming(dev->product_type),
-                                                  has_color_temp(dev->product_type),
-                                                  product_name(dev->product_type));
+                    auto *grp = db_.find_group(id);
+                    if (dev)
+                        dev->mqtt_exposed = exposed;
+                    else if (grp)
+                        grp->mqtt_exposed = exposed;
+                    else
+                        break;
+                }
+
+                if (exposed) {
+                    if (id == 0) {
+                        discovery_.publish_light(0, "All Lights", true, true, "Mesh Broadcast");
                     } else {
-                        auto *grp = db_.find_group(id);
-                        if (grp)
-                            discovery_.publish_light(id, grp->name, true, true);
+                        auto *dev = db_.find_device(id);
+                        if (dev) {
+                            discovery_.publish_light(id, dev->name, has_dimming(dev->product_type),
+                                                     has_color_temp(dev->product_type),
+                                                     product_name(dev->product_type));
+                        } else {
+                            auto *grp = db_.find_group(id);
+                            if (grp)
+                                discovery_.publish_light(id, grp->name, true, true);
+                        }
                     }
+                    /* Subscribe MQTT commands */
+                    {
+                        bool has_dim = true, has_ct = true;
+                        auto *dev = db_.find_device(id);
+                        if (dev) {
+                            has_dim = has_dimming(dev->product_type);
+                            has_ct = has_color_temp(dev->product_type);
+                        }
+                        do_mqtt_subscribe(
+                            discovery_.command_topic(id),
+                            [this, id](const std::string &, const std::string &payload) {
+                                on_switch_command(id, payload);
+                            });
+                        if (has_dim) {
+                            do_mqtt_subscribe(
+                                discovery_.brightness_command_topic(id),
+                                [this, id](const std::string &, const std::string &payload) {
+                                    on_brightness_command(id, payload);
+                                });
+                        }
+                        if (has_ct) {
+                            do_mqtt_subscribe(
+                                discovery_.color_temp_command_topic(id),
+                                [this, id](const std::string &, const std::string &payload) {
+                                    on_color_temp_command(id, payload);
+                                });
+                        }
+                    }
+                    publish_device_state(id);
+                } else {
+                    discovery_.remove_light(id);
                 }
-                /* Subscribe MQTT commands */
+
                 {
-                    bool has_dim = true, has_ct = true;
-                    auto *dev = db_.find_device(id);
-                    if (dev) {
-                        has_dim = has_dimming(dev->product_type);
-                        has_ct = has_color_temp(dev->product_type);
-                    }
-                    do_mqtt_subscribe(discovery_.command_topic(id),
-                                      [this, id](const std::string &, const std::string &payload) {
-                                          on_switch_command(id, payload);
-                                      });
-                    if (has_dim) {
-                        do_mqtt_subscribe(discovery_.brightness_command_topic(id),
-                                          [this, id](const std::string &, const std::string &payload) {
-                                              on_brightness_command(id, payload);
-                                          });
-                    }
-                    if (has_ct) {
-                        do_mqtt_subscribe(discovery_.color_temp_command_topic(id),
-                                          [this, id](const std::string &, const std::string &payload) {
-                                              on_color_temp_command(id, payload);
-                                          });
-                    }
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "{\"id\":%u,\"mqtt_exposed\":%s}", id,
+                             exposed ? "true" : "false");
+                    do_sse_emit("mqtt_toggled", buf);
                 }
-                publish_device_state(id);
-            } else {
-                discovery_.remove_light(id);
+                break;
             }
 
-            {
-                char buf[64];
-                snprintf(buf, sizeof(buf), "{\"id\":%u,\"mqtt_exposed\":%s}",
-                         id, exposed ? "true" : "false");
-                do_sse_emit("mqtt_toggled", buf);
-            }
-            break;
-        }
-
-        case DeferredAction::SaveDb: {
-            db_.save();
+            case DeferredAction::SaveDb: {
+                db_.save();
 #ifdef USE_ESP32
-            nvs_handle_t handle;
-            if (nvs_open("avionmesh", NVS_READWRITE, &handle) == ESP_OK) {
-                uint8_t val = mesh_mqtt_exposed_ ? 1 : 0;
-                nvs_set_u8(handle, "mesh_mqtt", val);
-                nvs_commit(handle);
-                nvs_close(handle);
-            }
+                nvs_handle_t handle;
+                if (nvs_open("avionmesh", NVS_READWRITE, &handle) == ESP_OK) {
+                    uint8_t val = mesh_mqtt_exposed_ ? 1 : 0;
+                    nvs_set_u8(handle, "mesh_mqtt", val);
+                    nvs_commit(handle);
+                    nvs_close(handle);
+                }
 #endif
-            ESP_LOGI(TAG, "Database saved");
-            do_sse_emit("save_result", "{\"status\":\"ok\"}");
-            break;
-        }
+                ESP_LOGI(TAG, "Database saved");
+                do_sse_emit("save_result", "{\"status\":\"ok\"}");
+                break;
+            }
         }
     }
 }
 
 /* ---- BLE write ---- */
 
-int AvionMeshHub::ble_write(csrmesh::Characteristic ch, const uint8_t *data,
-                              size_t len, bool response) {
+int AvionMeshHub::ble_write(csrmesh::Characteristic ch, const uint8_t *data, size_t len,
+                            bool response) {
     if (ble_state_ != BleState::Ready || !char_low_handle_ || !char_high_handle_)
         return -1;
 
-    uint16_t handle = (ch == csrmesh::Characteristic::Low) ? char_low_handle_
-                                                            : char_high_handle_;
+    uint16_t handle = (ch == csrmesh::Characteristic::Low) ? char_low_handle_ : char_high_handle_;
 
     auto err = esp_ble_gattc_write_char(
-        gattc_if_, conn_id_, handle,
-        len, const_cast<uint8_t *>(data),
-        response ? ESP_GATT_WRITE_TYPE_RSP : ESP_GATT_WRITE_TYPE_NO_RSP,
-        ESP_GATT_AUTH_REQ_NONE);
+        gattc_if_, conn_id_, handle, len, const_cast<uint8_t *>(data),
+        response ? ESP_GATT_WRITE_TYPE_RSP : ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
 
     return (err == ESP_OK) ? 0 : -1;
 }
 
 /* ---- Mesh RX ---- */
 
-void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
-                                uint8_t opcode, const uint8_t *payload,
-                                size_t payload_len) {
+void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source, uint8_t opcode,
+                              const uint8_t *payload, size_t payload_len) {
     rx_count_++;
     uint16_t src = (mcp_source == 0x8000) ? crypto_source : mcp_source;
     ESP_LOGD(TAG, "RX #%u: src=%u opcode=0x%02X len=%zu", rx_count_, src, opcode, payload_len);
 
-    if ((discovering_mesh_ || examining_) && opcode == MODEL_OPCODE &&
-        payload_len >= 10 && payload[0] == static_cast<uint8_t>(Verb::Ping)) {
+    if ((discovering_mesh_ || examining_) && opcode == MODEL_OPCODE && payload_len >= 10 &&
+        payload[0] == static_cast<uint8_t>(Verb::Ping)) {
         uint16_t device_id = (mcp_source == 0x8000) ? crypto_source : mcp_source;
 
         /* Skip our own broadcast echo (mcp_source == 0 means message is from us) */
@@ -888,8 +873,8 @@ void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
             snprintf(buf, sizeof(buf),
                      "{\"avion_id\":%u,\"fw\":\"%u.%u.%u\","
                      "\"flags\":%u,\"vendor_id\":%u,\"csr_product_id\":%u}",
-                     device_id, payload[3], payload[4], payload[5],
-                     payload[6], (payload[7] << 8) | payload[8], payload[9]);
+                     device_id, payload[3], payload[4], payload[5], payload[6],
+                     (payload[7] << 8) | payload[8], payload[9]);
 
             do_sse_emit("examine", buf);
 
@@ -901,7 +886,10 @@ void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
         if (discovering_mesh_) {
             bool seen = false;
             for (auto &d : discovered_devices_) {
-                if (d.device_id == device_id) { seen = true; break; }
+                if (d.device_id == device_id) {
+                    seen = true;
+                    break;
+                }
             }
             if (!seen) {
                 /* Dump raw payload for diagnostics */
@@ -912,8 +900,8 @@ void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
                                        "\"crypto_src\":%u,\"len\":%zu,\"bytes\":[",
                                        mcp_source, crypto_source, payload_len);
                     for (size_t b = 0; b < payload_len && b < 16; b++) {
-                        pos += snprintf(diag + pos, sizeof(diag) - pos,
-                                        "%s%u", b > 0 ? "," : "", payload[b]);
+                        pos += snprintf(diag + pos, sizeof(diag) - pos, "%s%u", b > 0 ? "," : "",
+                                        payload[b]);
                     }
                     snprintf(diag + pos, sizeof(diag) - pos, "]}");
                     do_sse_emit("debug", diag);
@@ -928,9 +916,8 @@ void AvionMeshHub::on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
                 dev.vendor_id = (static_cast<uint16_t>(payload[7]) << 8) | payload[8];
                 dev.csr_product_id = payload[9];
                 discovered_devices_.push_back(dev);
-                ESP_LOGI(TAG, "Discovered device %u: fw=%u.%u.%u product=%u",
-                         device_id, dev.fw_major, dev.fw_minor, dev.fw_patch,
-                         dev.csr_product_id);
+                ESP_LOGI(TAG, "Discovered device %u: fw=%u.%u.%u product=%u", device_id,
+                         dev.fw_major, dev.fw_minor, dev.fw_patch, dev.csr_product_id);
             }
         }
     }
@@ -968,8 +955,10 @@ void AvionMeshHub::on_mqtt_command(const std::string &payload) {
         if (action == "status") {
             char buf[192];
             snprintf(buf, sizeof(buf),
-                     "{\"action\":\"status\",\"ble_state\":%u,\"devices\":%zu,\"groups\":%zu,\"rx_count\":%u}",
-                     static_cast<uint8_t>(ble_state_), db_.devices().size(), db_.groups().size(), rx_count_);
+                     "{\"action\":\"status\",\"ble_state\":%u,\"devices\":%zu,\"groups\":%zu,\"rx_"
+                     "count\":%u}",
+                     static_cast<uint8_t>(ble_state_), db_.devices().size(), db_.groups().size(),
+                     rx_count_);
             send_response(buf);
             return true;
         }
@@ -977,7 +966,8 @@ void AvionMeshHub::on_mqtt_command(const std::string &payload) {
         if (ble_state_ != BleState::Ready) {
             char buf[128];
             snprintf(buf, sizeof(buf),
-                     "{\"action\":\"%s\",\"status\":\"error\",\"message\":\"ble_not_ready\",\"ble_state\":%u}",
+                     "{\"action\":\"%s\",\"status\":\"error\",\"message\":\"ble_not_ready\",\"ble_"
+                     "state\":%u}",
                      action.c_str(), static_cast<uint8_t>(ble_state_));
             send_response(buf);
             return true;
@@ -986,11 +976,8 @@ void AvionMeshHub::on_mqtt_command(const std::string &payload) {
         if (action == "scan_unassociated") {
             handle_scan_unassociated();
         } else if (action == "claim_device") {
-            handle_claim_device(
-                root["uuid_hash"] | 0u,
-                root["device_id"] | 0u,
-                root["name"] | "Unknown",
-                root["product_type"] | 0u);
+            handle_claim_device(root["uuid_hash"] | 0u, root["device_id"] | 0u,
+                                root["name"] | "Unknown", root["product_type"] | 0u);
         } else if (action == "unclaim_device") {
             handle_unclaim_device(root["avion_id"] | 0u);
         } else if (action == "create_group") {
@@ -1004,10 +991,8 @@ void AvionMeshHub::on_mqtt_command(const std::string &payload) {
         } else if (action == "discover_mesh") {
             handle_discover_mesh();
         } else if (action == "add_discovered") {
-            handle_add_discovered(
-                root["device_id"] | 0u,
-                root["name"] | "Unknown",
-                root["product_type"] | 0u);
+            handle_add_discovered(root["device_id"] | 0u, root["name"] | "Unknown",
+                                  root["product_type"] | 0u);
         } else if (action == "examine_device") {
             handle_examine_device(root["avion_id"] | 0u);
         } else if (action == "set_mesh_brightness") {
@@ -1036,22 +1021,23 @@ void AvionMeshHub::handle_scan_unassociated() {
     scanning_unassociated_ = true;
     scan_uuid_hashes_.clear();
 
-    csrmesh::discover_start(mesh_ctx_, [this](const uint8_t *uuid, size_t uuid_len,
-                                               uint32_t uuid_hash) {
-        scan_uuid_hashes_.push_back(uuid_hash);
+    csrmesh::discover_start(
+        mesh_ctx_, [this](const uint8_t *uuid, size_t uuid_len, uint32_t uuid_hash) {
+            scan_uuid_hashes_.push_back(uuid_hash);
 
-        char buf[128];
-        snprintf(buf, sizeof(buf),
-                 "{\"action\":\"scan_unassociated\",\"uuid_hash\":\"0x%08x\"}", uuid_hash);
-        send_response(buf);
-    });
+            char buf[128];
+            snprintf(buf, sizeof(buf),
+                     "{\"action\":\"scan_unassociated\",\"uuid_hash\":\"0x%08x\"}", uuid_hash);
+            send_response(buf);
+        });
 
     this->set_timeout("scan_stop", 5000, [this]() {
         csrmesh::discover_stop(mesh_ctx_);
 
         std::string json = "{\"uuid_hashes\":[";
         for (size_t i = 0; i < scan_uuid_hashes_.size(); i++) {
-            if (i > 0) json += ",";
+            if (i > 0)
+                json += ",";
             char buf[16];
             snprintf(buf, sizeof(buf), "\"0x%08x\"", scan_uuid_hashes_[i]);
             json += buf;
@@ -1067,20 +1053,20 @@ void AvionMeshHub::handle_scan_unassociated() {
 }
 
 void AvionMeshHub::handle_claim_device(uint32_t uuid_hash, uint16_t device_id,
-                                         const std::string &name, uint8_t product_type) {
+                                       const std::string &name, uint8_t product_type) {
     if (associating_) {
         send_response("{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"busy\"}");
         return;
     }
 
-    ESP_LOGI(TAG, "Claiming device: uuid_hash=0x%08x, device_id=%u, name=%s",
-             uuid_hash, device_id, name.c_str());
+    ESP_LOGI(TAG, "Claiming device: uuid_hash=0x%08x, device_id=%u, name=%s", uuid_hash, device_id,
+             name.c_str());
 
-    auto err = csrmesh::protocol::init(proto_ctx_, uuid_hash, device_id,
-                                        passphrase_.c_str());
+    auto err = csrmesh::protocol::init(proto_ctx_, uuid_hash, device_id, passphrase_.c_str());
     if (err != csrmesh::Error::Ok) {
         ESP_LOGE(TAG, "Proto init failed: %d", static_cast<int>(err));
-        send_response("{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"proto_init\"}");
+        send_response(
+            "{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"proto_init\"}");
         return;
     }
 
@@ -1088,7 +1074,8 @@ void AvionMeshHub::handle_claim_device(uint32_t uuid_hash, uint16_t device_id,
     if (err != csrmesh::Error::Ok) {
         ESP_LOGE(TAG, "Associate start failed: %d", static_cast<int>(err));
         csrmesh::protocol::cleanup(proto_ctx_);
-        send_response("{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"start_failed\"}");
+        send_response(
+            "{\"action\":\"claim_device\",\"status\":\"error\",\"message\":\"start_failed\"}");
         return;
     }
 
@@ -1144,12 +1131,11 @@ void AvionMeshHub::handle_claim_device_auto() {
         }
 
         ESP_LOGI(TAG, "Auto-claim assigning device ID %u", device_id);
-        handle_claim_device(pending_claim_uuid_hash_, device_id,
-                           pending_claim_name_, pending_claim_product_type_);
+        handle_claim_device(pending_claim_uuid_hash_, device_id, pending_claim_name_,
+                            pending_claim_product_type_);
 
         char buf[128];
-        snprintf(buf, sizeof(buf),
-                 "{\"status\":\"ok\",\"device_id\":%u}", device_id);
+        snprintf(buf, sizeof(buf), "{\"status\":\"ok\",\"device_id\":%u}", device_id);
         do_sse_emit("claim_result", buf);
     });
 }
@@ -1167,8 +1153,8 @@ void AvionMeshHub::handle_unclaim_device(uint16_t avion_id) {
     discovery_.remove_light(avion_id);
 
     char buf[128];
-    snprintf(buf, sizeof(buf),
-             "{\"action\":\"unclaim_device\",\"avion_id\":%u,\"status\":\"ok\"}", avion_id);
+    snprintf(buf, sizeof(buf), "{\"action\":\"unclaim_device\",\"avion_id\":%u,\"status\":\"ok\"}",
+             avion_id);
     send_response(buf);
 }
 
@@ -1176,8 +1162,8 @@ void AvionMeshHub::handle_create_group(uint16_t group_id, const std::string &nam
     db_.add_group(group_id, name);
 
     char buf[128];
-    snprintf(buf, sizeof(buf),
-             "{\"action\":\"create_group\",\"group_id\":%u,\"status\":\"ok\"}", group_id);
+    snprintf(buf, sizeof(buf), "{\"action\":\"create_group\",\"group_id\":%u,\"status\":\"ok\"}",
+             group_id);
     send_response(buf);
 }
 
@@ -1186,8 +1172,8 @@ void AvionMeshHub::handle_delete_group(uint16_t group_id) {
     discovery_.remove_light(group_id);
 
     char buf[128];
-    snprintf(buf, sizeof(buf),
-             "{\"action\":\"delete_group\",\"group_id\":%u,\"status\":\"ok\"}", group_id);
+    snprintf(buf, sizeof(buf), "{\"action\":\"delete_group\",\"group_id\":%u,\"status\":\"ok\"}",
+             group_id);
     send_response(buf);
 }
 
@@ -1240,45 +1226,45 @@ void AvionMeshHub::handle_discover_mesh() {
             snprintf(buf, sizeof(buf),
                      "%s{\"device_id\":%u,\"fw\":\"%u.%u.%u\","
                      "\"vendor_id\":%u,\"csr_product_id\":%u,\"known\":%s}",
-                     i > 0 ? "," : "",
-                     d.device_id, d.fw_major, d.fw_minor, d.fw_patch,
-                     d.vendor_id, d.csr_product_id,
-                     known ? "true" : "false");
+                     i > 0 ? "," : "", d.device_id, d.fw_major, d.fw_minor, d.fw_patch, d.vendor_id,
+                     d.csr_product_id, known ? "true" : "false");
             devices_arr += buf;
         }
         devices_arr += "]";
 
         discovering_mesh_ = false;
 
-        ESP_LOGI(TAG, "Mesh discovery complete: %zu device(s) found",
-                 discovered_devices_.size());
+        ESP_LOGI(TAG, "Mesh discovery complete: %zu device(s) found", discovered_devices_.size());
 
         do_sse_emit("discover_mesh", "{\"devices\":" + devices_arr + "}");
 
-        send_response("{\"action\":\"discover_mesh\",\"status\":\"done\","
-                      "\"devices\":" + devices_arr + "}");
+        send_response(
+            "{\"action\":\"discover_mesh\",\"status\":\"done\","
+            "\"devices\":" +
+            devices_arr + "}");
     });
 }
 
 void AvionMeshHub::handle_add_discovered(uint16_t device_id, const std::string &name,
-                                           uint8_t product_type) {
+                                         uint8_t product_type) {
     if (db_.find_device(device_id)) {
         char buf[128];
         snprintf(buf, sizeof(buf),
                  "{\"action\":\"add_discovered\",\"device_id\":%u,"
-                 "\"status\":\"error\",\"message\":\"already_exists\"}", device_id);
+                 "\"status\":\"error\",\"message\":\"already_exists\"}",
+                 device_id);
         send_response(buf);
         return;
     }
 
-    ESP_LOGI(TAG, "Adding discovered device: id=%u, name=%s, product_type=%u",
-             device_id, name.c_str(), product_type);
+    ESP_LOGI(TAG, "Adding discovered device: id=%u, name=%s, product_type=%u", device_id,
+             name.c_str(), product_type);
 
     db_.add_device(device_id, product_type, name);
 
     char buf[128];
-    snprintf(buf, sizeof(buf),
-             "{\"action\":\"add_discovered\",\"device_id\":%u,\"status\":\"ok\"}", device_id);
+    snprintf(buf, sizeof(buf), "{\"action\":\"add_discovered\",\"device_id\":%u,\"status\":\"ok\"}",
+             device_id);
     send_response(buf);
 }
 
@@ -1301,13 +1287,13 @@ void AvionMeshHub::handle_examine_device(uint16_t avion_id) {
             examining_ = false;
 
             char buf[128];
-            snprintf(buf, sizeof(buf),
-                     "{\"avion_id\":%u,\"error\":\"timeout\"}", examine_target_);
+            snprintf(buf, sizeof(buf), "{\"avion_id\":%u,\"error\":\"timeout\"}", examine_target_);
             do_sse_emit("examine", buf);
 
             snprintf(buf, sizeof(buf),
                      "{\"action\":\"examine_device\",\"avion_id\":%u,"
-                     "\"status\":\"error\",\"message\":\"timeout\"}", examine_target_);
+                     "\"status\":\"error\",\"message\":\"timeout\"}",
+                     examine_target_);
             send_response(buf);
         }
     });
@@ -1325,7 +1311,8 @@ void AvionMeshHub::handle_set_passphrase(const std::string &passphrase) {
         ESP_LOGE(TAG, "Failed to initialize crypto with new passphrase");
         char buf[128];
         snprintf(buf, sizeof(buf),
-                 "{\"action\":\"set_passphrase\",\"status\":\"error\",\"message\":\"crypto_init_failed\"}");
+                 "{\"action\":\"set_passphrase\",\"status\":\"error\",\"message\":\"crypto_init_"
+                 "failed\"}");
         send_response(buf);
         return;
     }
@@ -1333,7 +1320,7 @@ void AvionMeshHub::handle_set_passphrase(const std::string &passphrase) {
     /* Trigger reconnection if disconnected */
     if (ble_state_ == BleState::Disconnected || ble_state_ == BleState::Idle) {
         ble_state_ = BleState::Disconnected;
-        reconnect_at_ms_ = esphome::millis();  /* Reconnect immediately */
+        reconnect_at_ms_ = esphome::millis(); /* Reconnect immediately */
         ESP_LOGI(TAG, "Triggering BLE reconnection after passphrase set");
     }
 
@@ -1356,7 +1343,8 @@ void AvionMeshHub::handle_generate_passphrase() {
         ESP_LOGE(TAG, "Failed to initialize crypto with generated passphrase");
         char buf[128];
         snprintf(buf, sizeof(buf),
-                 "{\"action\":\"generate_passphrase\",\"status\":\"error\",\"message\":\"crypto_init_failed\"}");
+                 "{\"action\":\"generate_passphrase\",\"status\":\"error\",\"message\":\"crypto_"
+                 "init_failed\"}");
         send_response(buf);
         return;
     }
@@ -1364,12 +1352,13 @@ void AvionMeshHub::handle_generate_passphrase() {
     /* Trigger reconnection if disconnected */
     if (ble_state_ == BleState::Disconnected || ble_state_ == BleState::Idle) {
         ble_state_ = BleState::Disconnected;
-        reconnect_at_ms_ = esphome::millis();  /* Reconnect immediately */
+        reconnect_at_ms_ = esphome::millis(); /* Reconnect immediately */
         ESP_LOGI(TAG, "Triggering BLE reconnection after passphrase generated");
     }
 
     char buf[128];
-    snprintf(buf, sizeof(buf), "{\"action\":\"generate_passphrase\",\"status\":\"ok\",\"passphrase\":\"%s\"}",
+    snprintf(buf, sizeof(buf),
+             "{\"action\":\"generate_passphrase\",\"status\":\"ok\",\"passphrase\":\"%s\"}",
              passphrase.c_str());
     send_response(buf);
 }
@@ -1417,8 +1406,8 @@ void AvionMeshHub::on_switch_command(uint16_t avion_id, const std::string &paylo
         // brightness/set when adjusting a dimmer, so overwriting with 255 here
         // would stomp the paired brightness command that arrives moments later.
         auto it = device_states_.find(avion_id);
-        brightness = (it != device_states_.end() && it->second.brightness > 0)
-                     ? it->second.brightness : 255;
+        brightness =
+            (it != device_states_.end() && it->second.brightness > 0) ? it->second.brightness : 255;
     }
     Command cmd;
     cmd_brightness(avion_id, brightness, cmd);
@@ -1434,8 +1423,7 @@ void AvionMeshHub::on_brightness_command(uint16_t avion_id, const std::string &p
 
     uint32_t now = esphome::millis();
     auto it = last_brightness_ms_.find(avion_id);
-    if (it != last_brightness_ms_.end() &&
-        (now - it->second) < RAPID_DIM_THRESHOLD_MS) {
+    if (it != last_brightness_ms_.end() && (now - it->second) < RAPID_DIM_THRESHOLD_MS) {
         it->second = now;
         auto &state = device_states_[avion_id];
         state.brightness = brightness;
@@ -1475,7 +1463,7 @@ void AvionMeshHub::publish_all_discovery() {
         bool has_dim = has_dimming(dev.product_type);
         bool has_ct = has_color_temp(dev.product_type);
         discovery_.publish_light(dev.avion_id, dev.name, has_dim, has_ct,
-                                  product_name(dev.product_type));
+                                 product_name(dev.product_type));
     }
     for (auto &grp : db_.groups()) {
         if (!grp.mqtt_exposed)
@@ -1535,18 +1523,15 @@ void AvionMeshHub::sync_time() {
     if (!t || t->tm_year < 120)
         return;
 
-    ESP_LOGI(TAG, "Syncing mesh time: %04d-%02d-%02d %02d:%02d:%02d",
-             t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
-             t->tm_hour, t->tm_min, t->tm_sec);
+    ESP_LOGI(TAG, "Syncing mesh time: %04d-%02d-%02d %02d:%02d:%02d", t->tm_year + 1900,
+             t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
 
     Command cmd;
-    cmd_set_date(static_cast<uint16_t>(t->tm_year + 1900),
-                 static_cast<uint8_t>(t->tm_mon + 1),
+    cmd_set_date(static_cast<uint16_t>(t->tm_year + 1900), static_cast<uint8_t>(t->tm_mon + 1),
                  static_cast<uint8_t>(t->tm_mday), cmd);
     do_mesh_send(cmd);
 
-    cmd_set_time(static_cast<uint8_t>(t->tm_hour),
-                 static_cast<uint8_t>(t->tm_min),
+    cmd_set_time(static_cast<uint8_t>(t->tm_hour), static_cast<uint8_t>(t->tm_min),
                  static_cast<uint8_t>(t->tm_sec), cmd);
     do_mesh_send(cmd);
 }
@@ -1606,13 +1591,12 @@ void AvionMeshHub::publish_device_state(uint16_t avion_id) {
         char buf[128];
         int len;
         if (state.color_temp_known) {
-            len = snprintf(buf, sizeof(buf),
-                           "{\"avion_id\":%u,\"brightness\":%u,\"color_temp\":%u}",
-                           avion_id, state.brightness, state.color_temp);
+            len =
+                snprintf(buf, sizeof(buf), "{\"avion_id\":%u,\"brightness\":%u,\"color_temp\":%u}",
+                         avion_id, state.brightness, state.color_temp);
         } else {
-            len = snprintf(buf, sizeof(buf),
-                           "{\"avion_id\":%u,\"brightness\":%u}",
-                           avion_id, state.brightness);
+            len = snprintf(buf, sizeof(buf), "{\"avion_id\":%u,\"brightness\":%u}", avion_id,
+                           state.brightness);
         }
         do_sse_emit("state", std::string(buf, len));
     }
@@ -1628,26 +1612,28 @@ void AvionMeshHub::do_mesh_send(const Command &cmd) {
 #endif
 }
 
-void AvionMeshHub::do_mqtt_publish(const std::string &topic,
-                                   const std::string &payload, bool retain) {
+void AvionMeshHub::do_mqtt_publish(const std::string &topic, const std::string &payload,
+                                   bool retain) {
 #ifdef USE_ESP32
     auto *mqtt = esphome::mqtt::global_mqtt_client;
     if (mqtt)
         mqtt->publish(topic, payload, 0, retain);
 #else
-    (void)topic; (void)payload; (void)retain;
+    (void)topic;
+    (void)payload;
+    (void)retain;
 #endif
 }
 
-void AvionMeshHub::do_mqtt_subscribe(const std::string &topic,
-                                     std::function<void(const std::string &,
-                                                         const std::string &)> cb) {
+void AvionMeshHub::do_mqtt_subscribe(
+    const std::string &topic, std::function<void(const std::string &, const std::string &)> cb) {
 #ifdef USE_ESP32
     auto *mqtt = esphome::mqtt::global_mqtt_client;
     if (mqtt)
         mqtt->subscribe(topic, std::move(cb), 0);
 #else
-    (void)topic; (void)cb;
+    (void)topic;
+    (void)cb;
 #endif
 }
 
@@ -1656,7 +1642,8 @@ void AvionMeshHub::do_sse_emit(const std::string &event, const std::string &data
     if (web_handler_)
         web_handler_->send_event(event.c_str(), data);
 #else
-    (void)event; (void)data;
+    (void)event;
+    (void)data;
 #endif
 }
 
@@ -1665,7 +1652,8 @@ void AvionMeshHub::do_sse_emit(const std::string &event, const std::string &data
 // Returns true if device `mid` is a member of group `gid`.
 static bool is_group_member(const GroupEntry &grp, uint16_t mid) {
     for (auto m : grp.member_ids)
-        if (m == mid) return true;
+        if (m == mid)
+            return true;
     return false;
 }
 
@@ -1689,22 +1677,27 @@ void AvionMeshHub::check_group_state_latch(uint16_t avid) {
     std::set<uint16_t> triggered;
     for (uint16_t gid : candidate_ids) {
         auto *grp = db_.find_group(gid);
-        if (!grp) continue;
+        if (!grp)
+            continue;
 
         for (auto mid : grp->member_ids) {
             // Is mid exclusive to gid within candidate_ids?
             bool exclusive = true;
             for (uint16_t other : candidate_ids) {
-                if (other == gid) continue;
+                if (other == gid)
+                    continue;
                 auto *og = db_.find_group(other);
-                if (og && is_group_member(*og, mid)) { exclusive = false; break; }
+                if (og && is_group_member(*og, mid)) {
+                    exclusive = false;
+                    break;
+                }
             }
-            if (!exclusive) continue;
+            if (!exclusive)
+                continue;
 
             // Did this exclusive witness report the same brightness?
             auto sit = device_states_.find(mid);
-            if (sit != device_states_.end() &&
-                sit->second.brightness_known &&
+            if (sit != device_states_.end() && sit->second.brightness_known &&
                 sit->second.brightness == brightness) {
                 triggered.insert(gid);
                 break;
@@ -1725,11 +1718,19 @@ void AvionMeshHub::check_group_state_latch(uint16_t avid) {
                 continue;
             for (uint16_t tgid : triggered) {
                 auto *tg = db_.find_group(tgid);
-                if (!tg) continue;
+                if (!tg)
+                    continue;
                 bool subset = true;
                 for (auto hmid : h.member_ids)
-                    if (!is_group_member(*tg, hmid)) { subset = false; break; }
-                if (subset) { triggered.insert(h.group_id); changed = true; break; }
+                    if (!is_group_member(*tg, hmid)) {
+                        subset = false;
+                        break;
+                    }
+                if (subset) {
+                    triggered.insert(h.group_id);
+                    changed = true;
+                    break;
+                }
             }
         }
     }

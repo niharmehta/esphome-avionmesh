@@ -25,7 +25,8 @@ namespace json {
 bool parse_json(const std::string &data, const json_parse_t &f) {
     JsonDocument doc;
     auto err = deserializeJson(doc, data);
-    if (err) return false;
+    if (err)
+        return false;
     return f(doc.as<JsonObject>());
 }
 

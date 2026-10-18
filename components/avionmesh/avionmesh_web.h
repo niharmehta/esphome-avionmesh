@@ -22,8 +22,8 @@ class SseSession {
 
     // Public statics used by handle_events to set up the httpd session
     static void destroy(void *ptr);
-    static int nonblocking_send(httpd_handle_t hd, int sockfd, const char *buf,
-                                size_t buf_len, int flags);
+    static int nonblocking_send(httpd_handle_t hd, int sockfd, const char *buf, size_t buf_len,
+                                int flags);
 
  private:
     httpd_handle_t hd_;

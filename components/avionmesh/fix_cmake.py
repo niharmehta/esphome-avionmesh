@@ -1,4 +1,5 @@
 """Pre-build script: add library INCLUDE_DIRS to CMakeLists.txt."""
+
 Import("env")
 
 import os

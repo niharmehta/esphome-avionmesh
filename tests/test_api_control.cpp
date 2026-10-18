@@ -9,7 +9,7 @@ using namespace avionmesh;
 static constexpr uint16_t DEV = 32900;
 
 class ApiControlTest : public ::testing::Test {
-protected:
+ protected:
     TestHub hub;
 
     void SetUp() override {
@@ -22,8 +22,8 @@ protected:
 // Control: brightness only
 TEST_F(ApiControlTest, ControlBrightness_SendsToBle) {
     DeferredAction act;
-    act.type       = DeferredAction::Control;
-    act.id1        = DEV;
+    act.type = DeferredAction::Control;
+    act.id1 = DEV;
     act.brightness = 180;
     act.color_temp = -1;
     hub.push_action(act);
@@ -31,14 +31,14 @@ TEST_F(ApiControlTest, ControlBrightness_SendsToBle) {
     ASSERT_EQ(hub.mesh_sends.size(), 1u);
     auto &cmd = hub.mesh_sends[0];
     EXPECT_EQ(cmd.dest_id, DEV);
-    EXPECT_EQ(cmd.payload[1], 0x0A);   // Noun::Dimming
+    EXPECT_EQ(cmd.payload[1], 0x0A);  // Noun::Dimming
     EXPECT_EQ(cmd.payload[5], 180);
 }
 
 TEST_F(ApiControlTest, ControlBrightness_EchoesStateToMqtt) {
     DeferredAction act;
-    act.type       = DeferredAction::Control;
-    act.id1        = DEV;
+    act.type = DeferredAction::Control;
+    act.id1 = DEV;
     act.brightness = 180;
     act.color_temp = -1;
     hub.push_action(act);
@@ -53,8 +53,8 @@ TEST_F(ApiControlTest, ControlBrightness_EchoesStateToMqtt) {
 // Control: color_temp only
 TEST_F(ApiControlTest, ControlColorTemp_SendsCorrectKelvin) {
     DeferredAction act;
-    act.type       = DeferredAction::Control;
-    act.id1        = DEV;
+    act.type = DeferredAction::Control;
+    act.id1 = DEV;
     act.brightness = -1;
     act.color_temp = 3000;
     hub.push_action(act);
@@ -69,8 +69,8 @@ TEST_F(ApiControlTest, ControlColorTemp_SendsCorrectKelvin) {
 // Control: both brightness and color_temp → two mesh sends
 TEST_F(ApiControlTest, ControlBrightnessAndColorTemp_TwoMeshSends) {
     DeferredAction act;
-    act.type       = DeferredAction::Control;
-    act.id1        = DEV;
+    act.type = DeferredAction::Control;
+    act.id1 = DEV;
     act.brightness = 200;
     act.color_temp = 4000;
     hub.push_action(act);
@@ -88,8 +88,8 @@ TEST_F(ApiControlTest, SetMqttExposed_True_PublishesDiscoveryAndSubscribes) {
 
     DeferredAction act;
     act.type = DeferredAction::SetMqttExposed;
-    act.id1  = DEV2;
-    act.id2  = 1;  // exposed = true
+    act.id1 = DEV2;
+    act.id2 = 1;  // exposed = true
     hub.push_action(act);
 
     // Discovery topic must have been published (retained)
@@ -112,9 +112,15 @@ TEST_F(ApiControlTest, MultipleActionsProcessedInOrder) {
     hub.test_setup();
 
     DeferredAction a1;
-    a1.type = DeferredAction::Control; a1.id1 = DEV;  a1.brightness = 100; a1.color_temp = -1;
+    a1.type = DeferredAction::Control;
+    a1.id1 = DEV;
+    a1.brightness = 100;
+    a1.color_temp = -1;
     DeferredAction a2;
-    a2.type = DeferredAction::Control; a2.id1 = DEV2; a2.brightness = 50;  a2.color_temp = -1;
+    a2.type = DeferredAction::Control;
+    a2.id1 = DEV2;
+    a2.brightness = 50;
+    a2.color_temp = -1;
     hub.push_action(a1);
     hub.push_action(a2);
 

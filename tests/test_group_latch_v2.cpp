@@ -181,16 +181,22 @@ TEST(Propagation, DeepNesting_OutermostTriggered_PropagatesAll) {
     hub.db().add_group(G1, "G1");
     hub.db().add_group(G2, "G2");
     hub.db().add_group(G3, "G3");
-    for (auto id : {A, B})          hub.db().add_device_to_group(id, G1);
-    for (auto id : {A, B, C})       hub.db().add_device_to_group(id, G2);
-    for (auto id : {A, B, C, D})    hub.db().add_device_to_group(id, G3);
+    for (auto id : {A, B})
+        hub.db().add_device_to_group(id, G1);
+    for (auto id : {A, B, C})
+        hub.db().add_device_to_group(id, G2);
+    for (auto id : {A, B, C, D})
+        hub.db().add_device_to_group(id, G3);
     hub.test_setup();
 
     hub.inject_brightness(D, 42);  // D exclusive to G3 → G3 triggered
 
-    ASSERT_EQ(hub.states().count(G3), 1u); EXPECT_EQ(hub.states().at(G3).brightness, 42);
-    ASSERT_EQ(hub.states().count(G2), 1u); EXPECT_EQ(hub.states().at(G2).brightness, 42);
-    ASSERT_EQ(hub.states().count(G1), 1u); EXPECT_EQ(hub.states().at(G1).brightness, 42);
+    ASSERT_EQ(hub.states().count(G3), 1u);
+    EXPECT_EQ(hub.states().at(G3).brightness, 42);
+    ASSERT_EQ(hub.states().count(G2), 1u);
+    EXPECT_EQ(hub.states().at(G2).brightness, 42);
+    ASSERT_EQ(hub.states().count(G1), 1u);
+    EXPECT_EQ(hub.states().at(G1).brightness, 42);
 }
 
 // Sibling groups sharing a member: G1={A,B}, G2={A,C}.

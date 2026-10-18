@@ -22,8 +22,9 @@ static const char *NVS_KEY_PASSPHRASE = "passphrase";
 
 /*
  * NVS storage format (compact binary):
- * Devices: [count(2)] [id(2) product(1) flags(1) name_len(1) name(...) group_count(2) groups(2*N)]...
- * Groups:  [count(2)] [id(2) flags(1) name_len(1) name(...) member_count(2) members(2*N)]...
+ * Devices: [count(2)] [id(2) product(1) flags(1) name_len(1) name(...) group_count(2)
+ * groups(2*N)]... Groups:  [count(2)] [id(2) flags(1) name_len(1) name(...) member_count(2)
+ * members(2*N)]...
  */
 #endif
 
@@ -46,18 +47,23 @@ void DeviceDB::load() {
         nvs_get_blob(handle, NVS_KEY_DEVICES, buf.data(), &blob_size);
 
         size_t pos = 0;
-        uint16_t count = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+        uint16_t count = buf[pos] | (buf[pos + 1] << 8);
+        pos += 2;
         for (uint16_t i = 0; i < count && pos < blob_size; i++) {
             DeviceEntry d;
-            d.avion_id = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+            d.avion_id = buf[pos] | (buf[pos + 1] << 8);
+            pos += 2;
             d.product_type = buf[pos++];
             uint8_t flags = buf[pos++];
             d.mqtt_exposed = flags & 0x01;
             uint8_t name_len = buf[pos++];
-            d.name.assign(reinterpret_cast<char *>(&buf[pos]), name_len); pos += name_len;
-            uint16_t gc = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+            d.name.assign(reinterpret_cast<char *>(&buf[pos]), name_len);
+            pos += name_len;
+            uint16_t gc = buf[pos] | (buf[pos + 1] << 8);
+            pos += 2;
             for (uint16_t g = 0; g < gc && pos + 1 < blob_size; g++) {
-                d.groups.push_back(buf[pos] | (buf[pos + 1] << 8)); pos += 2;
+                d.groups.push_back(buf[pos] | (buf[pos + 1] << 8));
+                pos += 2;
             }
             devices_.push_back(std::move(d));
         }
@@ -69,17 +75,22 @@ void DeviceDB::load() {
         nvs_get_blob(handle, NVS_KEY_GROUPS, buf.data(), &blob_size);
 
         size_t pos = 0;
-        uint16_t count = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+        uint16_t count = buf[pos] | (buf[pos + 1] << 8);
+        pos += 2;
         for (uint16_t i = 0; i < count && pos < blob_size; i++) {
             GroupEntry g;
-            g.group_id = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+            g.group_id = buf[pos] | (buf[pos + 1] << 8);
+            pos += 2;
             uint8_t gflags = buf[pos++];
             g.mqtt_exposed = gflags & 0x01;
             uint8_t name_len = buf[pos++];
-            g.name.assign(reinterpret_cast<char *>(&buf[pos]), name_len); pos += name_len;
-            uint16_t mc = buf[pos] | (buf[pos + 1] << 8); pos += 2;
+            g.name.assign(reinterpret_cast<char *>(&buf[pos]), name_len);
+            pos += name_len;
+            uint16_t mc = buf[pos] | (buf[pos + 1] << 8);
+            pos += 2;
             for (uint16_t m = 0; m < mc && pos + 1 < blob_size; m++) {
-                g.member_ids.push_back(buf[pos] | (buf[pos + 1] << 8)); pos += 2;
+                g.member_ids.push_back(buf[pos] | (buf[pos + 1] << 8));
+                pos += 2;
             }
             groups_.push_back(std::move(g));
         }
@@ -104,17 +115,21 @@ void DeviceDB::save() {
     /* Serialize devices */
     std::vector<uint8_t> buf;
     uint16_t count = devices_.size();
-    buf.push_back(count & 0xFF); buf.push_back(count >> 8);
+    buf.push_back(count & 0xFF);
+    buf.push_back(count >> 8);
     for (auto &d : devices_) {
-        buf.push_back(d.avion_id & 0xFF); buf.push_back(d.avion_id >> 8);
+        buf.push_back(d.avion_id & 0xFF);
+        buf.push_back(d.avion_id >> 8);
         buf.push_back(d.product_type);
         buf.push_back(d.mqtt_exposed ? 0x01 : 0x00);
         buf.push_back(static_cast<uint8_t>(d.name.size()));
         buf.insert(buf.end(), d.name.begin(), d.name.end());
         uint16_t gc = d.groups.size();
-        buf.push_back(gc & 0xFF); buf.push_back(gc >> 8);
+        buf.push_back(gc & 0xFF);
+        buf.push_back(gc >> 8);
         for (auto gid : d.groups) {
-            buf.push_back(gid & 0xFF); buf.push_back(gid >> 8);
+            buf.push_back(gid & 0xFF);
+            buf.push_back(gid >> 8);
         }
     }
     nvs_set_blob(handle, NVS_KEY_DEVICES, buf.data(), buf.size());
@@ -122,16 +137,20 @@ void DeviceDB::save() {
     /* Serialize groups */
     buf.clear();
     count = groups_.size();
-    buf.push_back(count & 0xFF); buf.push_back(count >> 8);
+    buf.push_back(count & 0xFF);
+    buf.push_back(count >> 8);
     for (auto &g : groups_) {
-        buf.push_back(g.group_id & 0xFF); buf.push_back(g.group_id >> 8);
+        buf.push_back(g.group_id & 0xFF);
+        buf.push_back(g.group_id >> 8);
         buf.push_back(g.mqtt_exposed ? 0x01 : 0x00);
         buf.push_back(static_cast<uint8_t>(g.name.size()));
         buf.insert(buf.end(), g.name.begin(), g.name.end());
         uint16_t mc = g.member_ids.size();
-        buf.push_back(mc & 0xFF); buf.push_back(mc >> 8);
+        buf.push_back(mc & 0xFF);
+        buf.push_back(mc >> 8);
         for (auto mid : g.member_ids) {
-            buf.push_back(mid & 0xFF); buf.push_back(mid >> 8);
+            buf.push_back(mid & 0xFF);
+            buf.push_back(mid >> 8);
         }
     }
     nvs_set_blob(handle, NVS_KEY_GROUPS, buf.data(), buf.size());
@@ -151,15 +170,14 @@ bool DeviceDB::add_device(uint16_t avion_id, uint8_t product_type, const std::st
 
 bool DeviceDB::remove_device(uint16_t avion_id) {
     auto it = std::remove_if(devices_.begin(), devices_.end(),
-                              [avion_id](const DeviceEntry &d) { return d.avion_id == avion_id; });
+                             [avion_id](const DeviceEntry &d) { return d.avion_id == avion_id; });
     if (it == devices_.end())
         return false;
     devices_.erase(it, devices_.end());
 
     for (auto &g : groups_) {
-        g.member_ids.erase(
-            std::remove(g.member_ids.begin(), g.member_ids.end(), avion_id),
-            g.member_ids.end());
+        g.member_ids.erase(std::remove(g.member_ids.begin(), g.member_ids.end(), avion_id),
+                           g.member_ids.end());
     }
     save();
     return true;
@@ -182,15 +200,13 @@ bool DeviceDB::add_group(uint16_t group_id, const std::string &name) {
 
 bool DeviceDB::remove_group(uint16_t group_id) {
     auto it = std::remove_if(groups_.begin(), groups_.end(),
-                              [group_id](const GroupEntry &g) { return g.group_id == group_id; });
+                             [group_id](const GroupEntry &g) { return g.group_id == group_id; });
     if (it == groups_.end())
         return false;
     groups_.erase(it, groups_.end());
 
     for (auto &d : devices_) {
-        d.groups.erase(
-            std::remove(d.groups.begin(), d.groups.end(), group_id),
-            d.groups.end());
+        d.groups.erase(std::remove(d.groups.begin(), d.groups.end(), group_id), d.groups.end());
     }
     save();
     return true;
@@ -211,7 +227,8 @@ bool DeviceDB::add_device_to_group(uint16_t avion_id, uint16_t group_id) {
 
     if (std::find(dev->groups.begin(), dev->groups.end(), group_id) == dev->groups.end())
         dev->groups.push_back(group_id);
-    if (std::find(grp->member_ids.begin(), grp->member_ids.end(), avion_id) == grp->member_ids.end())
+    if (std::find(grp->member_ids.begin(), grp->member_ids.end(), avion_id) ==
+        grp->member_ids.end())
         grp->member_ids.push_back(avion_id);
 
     save();
@@ -227,7 +244,7 @@ bool DeviceDB::remove_device_from_group(uint16_t avion_id, uint16_t group_id) {
     dev->groups.erase(std::remove(dev->groups.begin(), dev->groups.end(), group_id),
                       dev->groups.end());
     grp->member_ids.erase(std::remove(grp->member_ids.begin(), grp->member_ids.end(), avion_id),
-                           grp->member_ids.end());
+                          grp->member_ids.end());
     save();
     return true;
 }
@@ -266,8 +283,8 @@ void DeviceDB::generate_passphrase() {
     /* Base64 encode: 16 bytes -> 24 chars + padding = 24 chars */
     char b64[32];
     size_t out_len = 0;
-    mbedtls_base64_encode(reinterpret_cast<unsigned char *>(b64), sizeof(b64),
-                          &out_len, raw, sizeof(raw));
+    mbedtls_base64_encode(reinterpret_cast<unsigned char *>(b64), sizeof(b64), &out_len, raw,
+                          sizeof(raw));
 
     passphrase_.assign(b64, out_len);
     save();

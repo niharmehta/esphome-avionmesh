@@ -6,12 +6,12 @@
 
 using namespace avionmesh;
 
-static constexpr uint16_t DEV_A   = 32900;
-static constexpr uint16_t DEV_B   = 32901;
+static constexpr uint16_t DEV_A = 32900;
+static constexpr uint16_t DEV_B = 32901;
 static constexpr uint16_t GROUP_1 = 1024;
 
 class GroupLatchTest : public ::testing::Test {
-protected:
+ protected:
     TestHub hub;
 
     void SetUp() override {
@@ -46,8 +46,7 @@ TEST_F(GroupLatchTest, DivergentReports_LatestValueWins) {
     hub.inject_brightness(DEV_B, 64);
 
     ASSERT_EQ(hub.states().count(GROUP_1), 1u);
-    EXPECT_EQ(hub.states().at(GROUP_1).brightness, 64u)
-        << "last exclusive-witness report wins";
+    EXPECT_EQ(hub.states().at(GROUP_1).brightness, 64u) << "last exclusive-witness report wins";
 }
 
 // Both devices report the same brightness — group MUST latch.
@@ -67,7 +66,8 @@ TEST_F(GroupLatchTest, ConvergedBrightness_EmitsGroupSseEvent) {
 
     bool found = false;
     for (auto &[ev, data] : hub.sse_events) {
-        if (ev == "state" && data.find("\"avion_id\":" + std::to_string(GROUP_1)) != std::string::npos) {
+        if (ev == "state" &&
+            data.find("\"avion_id\":" + std::to_string(GROUP_1)) != std::string::npos) {
             found = true;
             EXPECT_NE(data.find("\"brightness\":200"), std::string::npos);
         }
@@ -100,7 +100,7 @@ TEST_F(GroupLatchTest, SuccessiveGroupCommands_GroupTracksLatest) {
     hub.inject_brightness(DEV_A, 100);  // latch GROUP_1 = 100
     hub.inject_brightness(DEV_B, 100);  // same value, GROUP_1 stays 100
 
-    hub.inject_brightness(DEV_A, 50);   // new command at 50
+    hub.inject_brightness(DEV_A, 50);  // new command at 50
     hub.inject_brightness(DEV_B, 50);
 
     ASSERT_EQ(hub.states().count(GROUP_1), 1u);

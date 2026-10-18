@@ -30,10 +30,14 @@ static int validate_passphrase(const std::string &s) {
         bool valid_base64 = true;
         for (size_t i = 0; i < s.length(); i++) {
             char c = s[i];
-            if (c >= 'A' && c <= 'Z') continue;
-            if (c >= 'a' && c <= 'z') continue;
-            if (c >= '0' && c <= '9') continue;
-            if (c == '+' || c == '/') continue;
+            if (c >= 'A' && c <= 'Z')
+                continue;
+            if (c >= 'a' && c <= 'z')
+                continue;
+            if (c >= '0' && c <= '9')
+                continue;
+            if (c == '+' || c == '/')
+                continue;
             if (c == '=') {
                 padding++;
                 // Padding only allowed at end
@@ -72,8 +76,8 @@ void SseSession::destroy(void *ptr) {
     ses->fd_.store(0);
 }
 
-int SseSession::nonblocking_send(httpd_handle_t /*hd*/, int sockfd, const char *buf,
-                                 size_t buf_len, int /*flags*/) {
+int SseSession::nonblocking_send(httpd_handle_t /*hd*/, int sockfd, const char *buf, size_t buf_len,
+                                 int /*flags*/) {
     if (buf == nullptr)
         return HTTPD_SOCK_ERR_INVALID;
     int ret = ::send(sockfd, buf, buf_len, MSG_DONTWAIT);
@@ -113,9 +117,9 @@ bool SseSession::send(const char *event, const std::string &data) {
     }
     send_buf_ += "data: ";
     send_buf_ += data;
-    send_buf_ += "\r\n\r\n";   // data CRLF + blank-line terminator
+    send_buf_ += "\r\n\r\n";  // data CRLF + blank-line terminator
 
-    send_buf_ += "\r\n";       // chunk-terminating CRLF
+    send_buf_ += "\r\n";  // chunk-terminating CRLF
 
     // Backfill hex chunk length (payload between header CRLF and trailing CRLF)
     int chunk_len = static_cast<int>(send_buf_.size()) - HEADER_LEN - 2;
@@ -139,8 +143,7 @@ void SseSession::loop() {
     }
 
     size_t remaining = send_buf_.size() - bytes_sent_;
-    int ret = httpd_socket_send(hd_, fd_.load(),
-                                send_buf_.c_str() + bytes_sent_, remaining, 0);
+    int ret = httpd_socket_send(hd_, fd_.load(), send_buf_.c_str() + bytes_sent_, remaining, 0);
     if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
         if (++consecutive_failures_ >= MAX_FAILURES) {
             ESP_LOGW(TAG, "SSE session stuck, closing");
@@ -178,13 +181,12 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
     // Meta event
     {
         char buf[128];
-        snprintf(buf, sizeof(buf),
-                 "{\"ble_state\":%u,\"mesh_initialized\":%s,\"rx_count\":%u}",
-                 static_cast<uint8_t>(hub_->ble_state_),
-                 hub_->mesh_initialized_ ? "true" : "false",
+        snprintf(buf, sizeof(buf), "{\"ble_state\":%u,\"mesh_initialized\":%s,\"rx_count\":%u}",
+                 static_cast<uint8_t>(hub_->ble_state_), hub_->mesh_initialized_ ? "true" : "false",
                  hub_->rx_count_);
         session->send("meta", buf);
-        if (session->dead()) return;
+        if (session->dead())
+            return;
     }
 
     // Devices in batches of 5
@@ -196,7 +198,8 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
             size_t end = std::min(i + BATCH, devs.size());
             for (size_t j = i; j < end; j++) {
                 auto &dev = devs[j];
-                if (j > i) json += ",";
+                if (j > i)
+                    json += ",";
                 json += "{\"avion_id\":";
                 json += std::to_string(dev.avion_id);
                 json += ",\"name\":\"";
@@ -207,7 +210,8 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
                 json += product_name(dev.product_type);
                 json += "\",\"groups\":[";
                 for (size_t g = 0; g < dev.groups.size(); g++) {
-                    if (g > 0) json += ",";
+                    if (g > 0)
+                        json += ",";
                     json += std::to_string(dev.groups[g]);
                 }
                 json += "],\"mqtt_exposed\":";
@@ -230,7 +234,8 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
             }
             json += "]}";
             session->send("devices", json);
-            if (session->dead()) return;
+            if (session->dead())
+                return;
         }
     }
 
@@ -243,14 +248,16 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
             size_t end = std::min(i + BATCH, grps.size());
             for (size_t j = i; j < end; j++) {
                 auto &grp = grps[j];
-                if (j > i) json += ",";
+                if (j > i)
+                    json += ",";
                 json += "{\"group_id\":";
                 json += std::to_string(grp.group_id);
                 json += ",\"name\":\"";
                 json += grp.name;
                 json += "\",\"members\":[";
                 for (size_t m = 0; m < grp.member_ids.size(); m++) {
-                    if (m > 0) json += ",";
+                    if (m > 0)
+                        json += ",";
                     json += std::to_string(grp.member_ids[m]);
                 }
                 json += "],\"mqtt_exposed\":";
@@ -259,7 +266,8 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
             }
             json += "]}";
             session->send("groups", json);
-            if (session->dead()) return;
+            if (session->dead())
+                return;
         }
     }
 
@@ -269,7 +277,8 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
         snprintf(buf, sizeof(buf), "{\"mesh_mqtt_exposed\":%s}",
                  hub_->mesh_mqtt_exposed_ ? "true" : "false");
         session->send("mesh_status", buf);
-        if (session->dead()) return;
+        if (session->dead())
+            return;
     }
 
     session->send("sync_complete", "{}");
@@ -307,9 +316,7 @@ void AvionMeshWebHandler::sse_loop() {
         if (now - last_state_read_ms_ > 10000) {
             last_state_read_ms_ = now;
             hub_->read_all_dimming();
-            hub_->set_timeout("sse_color_read", 1000, [this]() {
-                hub_->read_all_color();
-            });
+            hub_->set_timeout("sse_color_read", 1000, [this]() { hub_->read_all_color(); });
         }
     }
 }
@@ -387,7 +394,8 @@ std::string AvionMeshWebHandler::read_body(AsyncWebServerRequest *request) {
         int ret = httpd_req_recv(req, &body[total_read], len - total_read);
         ESP_LOGD(TAG, "read_body loop: recv=%d total=%zu", ret, total_read);
         if (ret <= 0) {
-            ESP_LOGW(TAG, "read_body: recv error (ret=%d after %zu/%zu bytes)", ret, total_read, len);
+            ESP_LOGW(TAG, "read_body: recv error (ret=%d after %zu/%zu bytes)", ret, total_read,
+                     len);
             return {};
         }
         total_read += ret;
@@ -399,22 +407,22 @@ std::string AvionMeshWebHandler::read_body(AsyncWebServerRequest *request) {
 }
 
 void AvionMeshWebHandler::send_json(AsyncWebServerRequest *request, int code,
-                                     const std::string &json) {
+                                    const std::string &json) {
     auto *response = request->beginResponse(code, "application/json", json);
     response->addHeader("Cache-Control", "no-cache");
     request->send(response);
 }
 
 void AvionMeshWebHandler::send_error(AsyncWebServerRequest *request, int code,
-                                      const char *message) {
+                                     const char *message) {
     char buf[96];
     snprintf(buf, sizeof(buf), "{\"error\":\"%s\"}", message);
     send_json(request, code, buf);
 }
 
 void AvionMeshWebHandler::handle_index(AsyncWebServerRequest *request) {
-    auto *response = request->beginResponse(200, "text/html",
-                                             AVIONMESH_WEB_HTML, AVIONMESH_WEB_HTML_SIZE);
+    auto *response =
+        request->beginResponse(200, "text/html", AVIONMESH_WEB_HTML, AVIONMESH_WEB_HTML_SIZE);
     response->addHeader("Content-Encoding", "gzip");
     response->addHeader("Cache-Control", "public, max-age=3600");
     request->send(response);
@@ -458,7 +466,8 @@ void AvionMeshWebHandler::handle_discover_mesh_post(AsyncWebServerRequest *reque
     }
 
     if (hub_->ble_state_ != BleState::Ready) {
-        ESP_LOGW(TAG, "discover_mesh failed: BLE not ready (state=%u)", static_cast<uint8_t>(hub_->ble_state_));
+        ESP_LOGW(TAG, "discover_mesh failed: BLE not ready (state=%u)",
+                 static_cast<uint8_t>(hub_->ble_state_));
         send_error(request, 503, "ble_not_ready");
         return;
     }
@@ -485,7 +494,8 @@ void AvionMeshWebHandler::handle_scan_unassociated_post(AsyncWebServerRequest *r
     }
 
     if (hub_->ble_state_ != BleState::Ready) {
-        ESP_LOGW(TAG, "scan_unassociated failed: BLE not ready (state=%u)", static_cast<uint8_t>(hub_->ble_state_));
+        ESP_LOGW(TAG, "scan_unassociated failed: BLE not ready (state=%u)",
+                 static_cast<uint8_t>(hub_->ble_state_));
         send_error(request, 503, "ble_not_ready");
         return;
     }

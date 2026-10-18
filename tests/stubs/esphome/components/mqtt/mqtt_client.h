@@ -6,10 +6,11 @@ namespace esphome {
 namespace mqtt {
 
 class MQTTClientComponent {
-public:
+ public:
     bool is_connected() { return false; }
     std::string get_topic_prefix() { return "avionmesh"; }
-    void subscribe(const std::string &, std::function<void(const std::string &, const std::string &)>, int) {}
+    void subscribe(const std::string &,
+                   std::function<void(const std::string &, const std::string &)>, int) {}
     void publish(const std::string &, const std::string &, int, bool) {}
 };
 

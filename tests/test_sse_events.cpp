@@ -5,12 +5,12 @@
 
 using namespace avionmesh;
 
-static constexpr uint16_t DEV_A   = 32900;
-static constexpr uint16_t DEV_B   = 32901;
+static constexpr uint16_t DEV_A = 32900;
+static constexpr uint16_t DEV_B = 32901;
 static constexpr uint16_t GROUP_1 = 1024;
 
 class SseEventTest : public ::testing::Test {
-protected:
+ protected:
     TestHub hub;
 
     void SetUp() override {
@@ -24,7 +24,8 @@ TEST_F(SseEventTest, BrightnessBleRx_EmitsStateEvent) {
 
     ASSERT_EQ(hub.sse_events.size(), 1u);
     EXPECT_EQ(hub.sse_events[0].first, "state");
-    EXPECT_NE(hub.sse_events[0].second.find("\"avion_id\":" + std::to_string(DEV_A)), std::string::npos);
+    EXPECT_NE(hub.sse_events[0].second.find("\"avion_id\":" + std::to_string(DEV_A)),
+              std::string::npos);
     EXPECT_NE(hub.sse_events[0].second.find("\"brightness\":128"), std::string::npos);
 }
 
@@ -59,7 +60,8 @@ TEST_F(SseEventTest, GroupLatch_EmitsGroupSseEvent) {
 
     bool group_event = false;
     for (auto &[ev, data] : hub.sse_events) {
-        if (ev == "state" && data.find("\"avion_id\":" + std::to_string(GROUP_1)) != std::string::npos)
+        if (ev == "state" &&
+            data.find("\"avion_id\":" + std::to_string(GROUP_1)) != std::string::npos)
             group_event = true;
     }
     EXPECT_TRUE(group_event) << "group latch must emit SSE state for group";
