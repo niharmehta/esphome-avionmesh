@@ -49,8 +49,8 @@ jobs:
         run: |
           cp examples/avionmesh.example.yaml avionmesh.yaml
           cat > secrets.yaml <<'EOF'
-          avionmesh_passphrase: "AAAAAAAAAAAAAAAAAAAAAA=="
-          api_encryption_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          avionmesh_passphrase: "AQEBAQEBAQEBAQEBAQEBAQ=="
+          api_encryption_key: "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
           ota_password: "ci-dummy"
           mqtt_username: "ci"
           mqtt_password: "ci"
