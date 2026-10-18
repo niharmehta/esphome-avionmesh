@@ -80,7 +80,9 @@ async def to_code(config):
         cg.add(var.set_passphrase(config[CONF_PASSPHRASE]))
 
     # Download libraries via lib_deps (compiled via fix_cmake.py for ESP-IDF)
-    cg.add_platformio_option("lib_deps", ["https://github.com/oyvindkinsey/avionmesh-cpp.git"])
+    cg.add_platformio_option(
+        "lib_deps", ["https://github.com/oyvindkinsey/avionmesh-cpp.git#v1.0.0"]
+    )
 
     # C++20 for the libraries
     cg.add_build_flag("-std=gnu++20")
