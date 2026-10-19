@@ -58,6 +58,7 @@ class AvionMeshWebHandler : public AsyncWebHandler {
 
     std::string read_body(AsyncWebServerRequest *request);
     std::string body_buf_;
+    bool body_received_{false};
     bool body_too_big_{false};
 
     void send_initial_sync(SseSession *session);

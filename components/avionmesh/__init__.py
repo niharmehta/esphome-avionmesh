@@ -79,20 +79,16 @@ async def to_code(config):
     if CONF_PASSPHRASE in config:
         cg.add(var.set_passphrase(config[CONF_PASSPHRASE]))
 
-    # Download libraries via lib_deps (compiled via fix_cmake.py for ESP-IDF)
-    cg.add_platformio_option(
-        "lib_deps", ["https://github.com/oyvindkinsey/avionmesh-cpp.git#v1.0.0"]
-    )
+    # Mesh libraries (avionmesh-cpp with recsrmesh-cpp + micro-ecc) as a
+    # converted library: ESPHome's native ESP-IDF toolchain turns the
+    # library.json manifest into an IDF component. No PlatformIO involved.
+    cg.add_library("avionmesh", None, "https://github.com/oyvindkinsey/avionmesh-cpp.git#v1.1.3")
 
     # C++20 for the libraries
     cg.add_build_flag("-std=gnu++20")
     esp32_ble.register_gap_event_handler(parent, var)
     esp32_ble.register_gap_scan_event_handler(parent, var)
     esp32_ble.register_gattc_event_handler(parent, var)
-
-    # Patch src/CMakeLists.txt to add mbedtls dependency for ESP-IDF linking
-    script_path = os.path.join(os.path.dirname(__file__), "fix_cmake.py")
-    cg.add_platformio_option("extra_scripts", [f"pre:{script_path}"])
 
     # Gzip web assets → C headers
     comp_dir = os.path.dirname(__file__)

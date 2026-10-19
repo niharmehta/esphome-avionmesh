@@ -4,11 +4,11 @@
 
 | What | Where declared | Pin |
 | --- | --- | --- |
-| ESPHome >= 2026.4.0 | `avionmesh.yaml` (`min_version`) | minimum only |
+| ESPHome >= 2026.9.0 (native ESP-IDF toolchain, no PlatformIO) | `avionmesh.yaml` (`min_version`) | minimum only |
 | ESP32 / ESP-IDF, MQTT, JSON, BLE, web_server | `components/avionmesh/__init__.py` (`DEPENDENCIES`/`AUTO_LOAD`) | via ESPHome |
-| avionmesh-cpp (+ recsrmesh-cpp inside it) | `__init__.py` `lib_deps` | unpinned git — pin before tagging a release |
+| avionmesh-cpp v1.1.3 (+ recsrmesh-cpp v1.1.3 inside it) | `__init__.py` `cg.add_library` | pinned git ref `#v1.1.3` |
 | ArduinoJson | via ESPHome `json` component | via ESPHome |
-| Mbed TLS | via ESP-IDF | via ESP-IDF |
+| Mbed TLS / PSA Crypto | via ESP-IDF 5.5 (Mbed TLS 3) or 6 (Mbed TLS 4) | via ESP-IDF |
 | GoogleTest (host tests) | `tests/CMakeLists.txt` FetchContent | v1.14.0 |
 | ArduinoJson (host tests) | `tests/CMakeLists.txt` FetchContent fallback | v7.4.2 |
 | Python tool (`tools/avion_import.py`) | stdlib only | — |

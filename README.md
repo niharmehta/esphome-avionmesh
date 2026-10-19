@@ -47,6 +47,11 @@ Using a board with a dedicated Ethernet PHY (connected via RMII or SPI) keeps Wi
 
 ## Installation
 
+### Build requirements
+
+- ESPHome 2026.9.0 or newer, using its native ESP-IDF toolchain (no PlatformIO).
+- ESP-IDF 5.5 and ESP-IDF 6 (Mbed TLS 4) are both supported.
+
 ### Minimal Configuration
 
 The example below uses an **Olimex ESP32-POE** pinout. You **must** adjust the

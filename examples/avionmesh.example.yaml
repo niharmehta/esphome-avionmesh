@@ -1,7 +1,7 @@
 esphome:
   name: avionmesh
   compile_process_limit: 3
-  min_version: "2026.4.0"
+  min_version: "2026.9.0"
 
 esp32:
   variant: ESP32

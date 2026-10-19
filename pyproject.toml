@@ -12,7 +12,5 @@ target-version = "py311"
 ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
-# PlatformIO SCons script: Import/env are injected by SCons.
-"components/avionmesh/fix_cmake.py" = ["F821"]
 # ESPHome codegen runs in ESPHome's own event loop; sync file IO is the norm.
 "components/avionmesh/__init__.py" = ["ASYNC230"]

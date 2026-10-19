@@ -183,7 +183,7 @@ void AvionMeshWebHandler::send_initial_sync(SseSession *session) {
         char buf[128];
         snprintf(buf, sizeof(buf), "{\"ble_state\":%u,\"mesh_initialized\":%s,\"rx_count\":%u}",
                  static_cast<uint8_t>(hub_->ble_state_), hub_->mesh_initialized_ ? "true" : "false",
-                 hub_->rx_count_);
+                 static_cast<unsigned>(hub_->rx_count_));
         session->send("meta", buf);
         if (session->dead())
             return;
@@ -322,12 +322,14 @@ void AvionMeshWebHandler::sse_loop() {
 }
 
 bool AvionMeshWebHandler::canHandle(AsyncWebServerRequest *request) const {
-    std::string url = request->url();
+    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+    std::string url(request->url_to(url_buf));
     return url == "/ui" || url.rfind("/api/", 0) == 0;
 }
 
 void AvionMeshWebHandler::handleRequest(AsyncWebServerRequest *request) {
-    std::string url = request->url();
+    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+    std::string url(request->url_to(url_buf));
     auto method = request->method();
 
     ESP_LOGD(TAG, "Request: %s %s", method == HTTP_POST ? "POST" : "GET", url.c_str());
@@ -379,6 +381,7 @@ void AvionMeshWebHandler::handleBody(AsyncWebServerRequest * /*request*/, uint8_
                                      size_t index, size_t total) {
     if (index == 0) {
         body_buf_.clear();
+        body_received_ = true;
         body_too_big_ = total > 16384;
         if (!body_too_big_)
             body_buf_.reserve(total);
@@ -389,8 +392,11 @@ void AvionMeshWebHandler::handleBody(AsyncWebServerRequest * /*request*/, uint8_
 }
 
 std::string AvionMeshWebHandler::read_body(AsyncWebServerRequest *request) {
-    // Newer ESPHome web_server_idf consumes the body and hands it to handleBody()
-    if (!body_buf_.empty() || body_too_big_) {
+    // Newer ESPHome web_server_idf consumes the body and hands it to handleBody().
+    // Use the buffer whenever handleBody ran - even for an empty body, where
+    // falling through to the httpd read would hit the already-consumed body.
+    if (body_received_) {
+        body_received_ = false;
         std::string body;
         body.swap(body_buf_);
         if (body_too_big_) {

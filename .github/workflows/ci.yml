@@ -44,9 +44,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install ESPHome
-        # Pin to the version this repo targets; ESPHome >= 2026.8 needs the
-        # native ESP-IDF build path (see PR #17 discussion).
-        run: pip install "esphome==2026.4.0"
+        run: pip install "esphome==2026.9.1"
       - name: Provide dummy config and secrets for CI compile
         run: |
           cp examples/avionmesh.example.yaml avionmesh.yaml
