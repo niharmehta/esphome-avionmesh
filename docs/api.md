@@ -34,6 +34,7 @@ All endpoints: `POST`, `Content-Type: application/json`, except `/api/events`.
 | `POST /api/generate_passphrase` | Generate and store a new random passphrase |
 | `POST /api/factory_reset` | Erase all data |
 | `POST /api/import` | Import device/group/passphrase data (from `avion_import.py`) |
+| `GET /api/export` | Backup in the same schema `POST /api/import` accepts (`reset`, `passphrase`, `devices`, `groups`). The passphrase is always included — a backup without the key cannot restore the mesh, so store the file safely |
 
 ## SSE Events
 

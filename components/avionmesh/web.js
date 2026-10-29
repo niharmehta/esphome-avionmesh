@@ -615,6 +615,21 @@ async function copyGenerated() {
   }
 }
 
+async function exportBackup() {
+  const res = await fetch('api/export');
+  if (!res.ok) { showMsg($('setupMsg'), 'Export failed', false); return; }
+  const text = await res.text();
+  const blob = new Blob([text], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'avionmesh-backup.json';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+  showMsg($('setupMsg'), 'Backup downloaded — it contains your mesh passphrase, store it somewhere safe', true, true);
+}
+
 async function factoryReset() {
   if (!confirm('Factory reset removes all devices, groups, and passphrase. Continue?')) return;
   await postJson('factory_reset', {});

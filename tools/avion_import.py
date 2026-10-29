@@ -180,9 +180,39 @@ def load_from_file(path):
     return payload
 
 
+def fetch_export(device_ip, username=None, password_http=None):
+    url = f"http://{device_ip}/api/export"
+    headers = {}
+    if username and password_http:
+        import base64
+
+        cred = base64.b64encode(f"{username}:{password_http}".encode()).decode()
+        headers["Authorization"] = f"Basic {cred}"
+    req = Request(url, headers=headers, method="GET")
+
+    print(f"\nExporting from {device_ip}...")
+    try:
+        with urlopen(req, timeout=30) as resp:
+            payload = json.loads(resp.read())
+            print(
+                f"  Got {len(payload.get('devices', []))} devices, "
+                f"{len(payload.get('groups', []))} groups"
+                + (", passphrase included" if payload.get("passphrase") else "")
+            )
+            return payload
+    except HTTPError as e:
+        body = e.read().decode(errors="replace")
+        print(f"Export failed — HTTP {e.code}: {body}", file=sys.stderr)
+        raise SystemExit(1)
+    except URLError as e:
+        print(f"Cannot reach device at {device_ip}: {e.reason}", file=sys.stderr)
+        raise SystemExit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Import Avi-on cloud data into ESPHome avionmesh device"
+        description="Import Avi-on cloud data into ESPHome avionmesh device, "
+        "or export a backup from it"
     )
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
@@ -191,6 +221,12 @@ def main():
         help="Import from a local mesh_db.json (produced by mesh-tui)",
     )
     source.add_argument("--email", metavar="EMAIL", help="Avi-on account email (cloud import)")
+    source.add_argument(
+        "--export",
+        metavar="PATH",
+        help="Export a backup from the device and write it to PATH "
+        "(includes the mesh passphrase — store it safely)",
+    )
     parser.add_argument("--password", help="Avi-on account password (required with --email)")
     parser.add_argument("--device", required=True, help="ESPHome device IP address or hostname")
     parser.add_argument(
@@ -202,6 +238,13 @@ def main():
     parser.add_argument("--username", help="HTTP Basic Auth username for the ESPHome device")
     parser.add_argument("--password-http", help="HTTP Basic Auth password for the ESPHome device")
     args = parser.parse_args()
+
+    if args.export:
+        payload = fetch_export(args.device, args.username, args.password_http)
+        with open(args.export, "w") as f:
+            json.dump(payload, f, indent=2)
+        print(f"Backup written to {args.export} — it contains your mesh passphrase.")
+        return
 
     if args.from_file:
         payload = load_from_file(args.from_file)

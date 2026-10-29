@@ -366,6 +366,8 @@ void AvionMeshWebHandler::handleRequest(AsyncWebServerRequest *request) {
         handle_set_mqtt_exposed(request);
     } else if (url == "/api/save" && method == HTTP_POST) {
         handle_save(request);
+    } else if (url == "/api/export" && method == HTTP_GET) {
+        handle_export(request);
     } else if (url == "/api/set_passphrase" && method == HTTP_POST) {
         handle_set_passphrase(request);
     } else if (url == "/api/generate_passphrase" && method == HTTP_POST) {
@@ -845,6 +847,86 @@ void AvionMeshWebHandler::handle_save(AsyncWebServerRequest *request) {
         hub_->pending_actions_.push_back(std::move(act));
     }
     send_json(request, 200, "{\"status\":\"ok\"}");
+}
+
+namespace {
+// Minimal JSON string escaping for device/group names.
+void append_json_string(std::string &out, const std::string &s) {
+    out += '"';
+    for (char c : s) {
+        switch (c) {
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    out += buf;
+                } else {
+                    out += c;
+                }
+        }
+    }
+    out += '"';
+}
+}  // namespace
+
+void AvionMeshWebHandler::handle_export(AsyncWebServerRequest *request) {
+    // The passphrase is always included: a backup without the key cannot
+    // restore the mesh. Physical and network security of the backup file
+    // and the device itself are the user's responsibility.
+    std::string body = "{\"reset\":false,\"passphrase\":";
+    append_json_string(body, hub_->db_.passphrase());
+    body += ",\"devices\":[";
+    bool first = true;
+    for (const auto &dev : hub_->db_.devices()) {
+        if (!first)
+            body += ',';
+        first = false;
+        body += "{\"device_id\":" + std::to_string(dev.avion_id) + ",\"name\":";
+        append_json_string(body, dev.name);
+        body += ",\"product_type\":" + std::to_string(dev.product_type) + ",\"groups\":[";
+        for (size_t i = 0; i < dev.groups.size(); i++) {
+            if (i > 0)
+                body += ',';
+            body += std::to_string(dev.groups[i]);
+        }
+        body += "],\"mqtt_exposed\":" + std::string(dev.mqtt_exposed ? "true" : "false") + "}";
+    }
+    body += "],\"groups\":[";
+    first = true;
+    for (const auto &grp : hub_->db_.groups()) {
+        if (!first)
+            body += ',';
+        first = false;
+        body += "{\"group_id\":" + std::to_string(grp.group_id) + ",\"name\":";
+        append_json_string(body, grp.name);
+        body += ",\"members\":[";
+        for (size_t i = 0; i < grp.member_ids.size(); i++) {
+            if (i > 0)
+                body += ',';
+            body += std::to_string(grp.member_ids[i]);
+        }
+        body += "],\"mqtt_exposed\":" + std::string(grp.mqtt_exposed ? "true" : "false") + "}";
+    }
+    body += "]}";
+
+    auto *response = request->beginResponse(200, "application/json", body);
+    response->addHeader("Content-Disposition", "attachment; filename=\"avionmesh-backup.json\"");
+    request->send(response);
 }
 
 void AvionMeshWebHandler::handle_set_mqtt_exposed(AsyncWebServerRequest *request) {
