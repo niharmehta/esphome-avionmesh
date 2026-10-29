@@ -87,6 +87,9 @@ void MqttDiscovery::publish_light(uint16_t avion_id, const std::string &name, bo
             object_id += c;
     }
 
+    if (object_id.empty())
+        object_id = uid;
+
     std::string config = "{";
     config += "\"name\":\"" + name + "\",";
     config += "\"unique_id\":\"" + std::string(uid) + "\",";
