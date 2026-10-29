@@ -68,6 +68,10 @@
       <button onclick="setPassphrase()">Set</button>
       <button onclick="generatePassphrase()">Generate</button>
     </div>
+    <div class="row" id="generatedRow" style="display:none">
+      <input id="generatedPassphrase" type="text" readonly style="width:260px">
+      <button onclick="copyGenerated()">Copy</button>
+    </div>
     <div id="setupMsg"></div>
     <div class="row" style="margin-top:10px">
       <button class="danger" onclick="factoryReset()">Factory Reset</button>
