@@ -66,10 +66,7 @@ enum class BleState : uint8_t {
     Disconnected,
 };
 
-class AvionMeshHub : public esphome::Component,
-                     public esphome::esp32_ble::GAPEventHandler,
-                     public esphome::esp32_ble::GAPScanEventHandler,
-                     public esphome::esp32_ble::GATTcEventHandler {
+class AvionMeshHub : public esphome::Component {
     friend class AvionMeshWebHandler;
 
  public:
@@ -80,17 +77,17 @@ class AvionMeshHub : public esphome::Component,
     void dump_config() override;
     float get_setup_priority() const override;
 
-    /* esp32_ble event handler interfaces */
-    void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) override;
-    void gap_scan_event_handler(const esphome::esp32_ble::BLEScanResult &result) override;
+    /* esp32_ble event handlers (callback-based since ESPHome 2026.4.0) */
+    void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
+    void gap_scan_event_handler(const esphome::esp32_ble::BLEScanResult &result);
     void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if,
-                              esp_ble_gattc_cb_param_t *param) override;
+                             esp_ble_gattc_cb_param_t *param);
 
  protected:
     std::string passphrase_;  // From YAML (if provided), used to initialize db
 
     csrmesh::MeshContext mesh_ctx_{};
-    bool mesh_initialized_{false};  // true when crypto is ready AND BLE is connected
+    bool mesh_initialized_{false};    // true when crypto is ready AND BLE is connected
     bool crypto_initialized_{false};  // true when csrmesh::init() succeeded
 
     /* BLE connection management */
@@ -186,14 +183,14 @@ class AvionMeshHub : public esphome::Component,
     int ble_write(csrmesh::Characteristic ch, const uint8_t *data, size_t len, bool response);
 
     /* Mesh RX handler */
-    void on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source,
-                    uint8_t opcode, const uint8_t *payload, size_t payload_len);
+    void on_mesh_rx(uint16_t mcp_source, uint16_t crypto_source, uint8_t opcode,
+                    const uint8_t *payload, size_t payload_len);
 
     /* MQTT */
     void on_mqtt_command(const std::string &payload);
     void handle_scan_unassociated();
-    void handle_claim_device(uint32_t uuid_hash, uint16_t device_id,
-                              const std::string &name, uint8_t product_type);
+    void handle_claim_device(uint32_t uuid_hash, uint16_t device_id, const std::string &name,
+                             uint8_t product_type);
     void handle_claim_device_auto();
     uint16_t next_device_id();
     uint16_t next_group_id();
@@ -228,9 +225,8 @@ class AvionMeshHub : public esphome::Component,
     /* Virtual seams — overridden by TestHub in tests; default impls use real globals */
     virtual void do_mesh_send(const Command &cmd);
     virtual void do_mqtt_publish(const std::string &topic, const std::string &payload, bool retain);
-    virtual void do_mqtt_subscribe(const std::string &topic,
-                                   std::function<void(const std::string &,
-                                                       const std::string &)> cb);
+    virtual void do_mqtt_subscribe(
+        const std::string &topic, std::function<void(const std::string &, const std::string &)> cb);
     virtual void do_sse_emit(const std::string &event, const std::string &data);
 };
 

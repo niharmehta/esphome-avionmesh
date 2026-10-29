@@ -8,64 +8,55 @@ namespace avionmesh {
 
 std::string MqttDiscovery::state_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/state",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/state", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::command_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/set",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/set", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::brightness_state_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/brightness/state",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/brightness/state", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::brightness_command_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/brightness/set",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/brightness/set", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::color_temp_state_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/color_temp/state",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/color_temp/state", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::color_temp_command_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/light/%u/color_temp/set",
-             topic_prefix_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "%s/light/%u/color_temp/set", topic_prefix_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::discovery_topic(uint16_t avion_id) const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "homeassistant/light/%s_%u/config",
-             node_name_.c_str(), avion_id);
+    snprintf(buf, sizeof(buf), "homeassistant/light/%s_%u/config", node_name_.c_str(), avion_id);
     return buf;
 }
 
 std::string MqttDiscovery::management_command_topic() const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/avionmesh/command",
-             topic_prefix_.c_str());
+    snprintf(buf, sizeof(buf), "%s/avionmesh/command", topic_prefix_.c_str());
     return buf;
 }
 
 std::string MqttDiscovery::management_response_topic() const {
     char buf[128];
-    snprintf(buf, sizeof(buf), "%s/avionmesh/response",
-             topic_prefix_.c_str());
+    snprintf(buf, sizeof(buf), "%s/avionmesh/response", topic_prefix_.c_str());
     return buf;
 }
 
@@ -81,9 +72,8 @@ void MqttDiscovery::publish_(const std::string &topic, const std::string &payloa
 #endif
 }
 
-void MqttDiscovery::publish_light(uint16_t avion_id, const std::string &name,
-                                   bool has_brightness, bool has_color_temp,
-                                   const std::string &product_name) {
+void MqttDiscovery::publish_light(uint16_t avion_id, const std::string &name, bool has_brightness,
+                                  bool has_color_temp, const std::string &product_name) {
     char uid[64];
     snprintf(uid, sizeof(uid), "%s_%u", node_name_.c_str(), avion_id);
 

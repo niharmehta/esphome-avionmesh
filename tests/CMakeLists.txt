@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 project(avionmesh_tests CXX)
 
+enable_testing()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -16,8 +18,29 @@ FetchContent_MakeAvailable(googletest)
 
 # ---- Sources ----
 set(COMPONENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../components/avionmesh)
-set(AVIONMESH_LIB /home/oyvind/avionmesh-cpp)
-set(ARDUINOJSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../.esphome/build/avionmesh/.piolibdeps/avionmesh/ArduinoJson/src)
+# avionmesh-cpp: sibling checkout by default; override with -DAVIONMESH_LIB=...
+set(AVIONMESH_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../../avionmesh-cpp"
+    CACHE PATH "Path to avionmesh-cpp checkout")
+if(NOT EXISTS ${AVIONMESH_LIB}/include)
+    message(FATAL_ERROR
+        "avionmesh-cpp not found at ${AVIONMESH_LIB}. Clone "
+        "https://github.com/oyvindkinsey/avionmesh-cpp next to this repo, "
+        "or pass -DAVIONMESH_LIB=<path>.")
+endif()
+# ArduinoJson: local ESPHome build tree if present, else FetchContent
+set(ARDUINOJSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../.esphome/build/avionmesh/managed_components/bblanchon__arduinojson/src
+    CACHE PATH "ArduinoJson src directory")
+if(EXISTS ${ARDUINOJSON_DIR}/ArduinoJson.h)
+    add_library(arduinojson INTERFACE)
+    target_include_directories(arduinojson INTERFACE ${ARDUINOJSON_DIR})
+    set(ARDUINOJSON_TARGET arduinojson)
+else()
+    set(ARDUINOJSON_TARGET ArduinoJson)
+    FetchContent_Declare(arduinojson
+        GIT_REPOSITORY https://github.com/bblanchon/ArduinoJson.git
+        GIT_TAG        v7.4.2)
+    FetchContent_MakeAvailable(arduinojson)
+endif()
 
 set(SOURCES
     ${COMPONENT_DIR}/avionmesh_hub.cpp
@@ -43,7 +66,6 @@ target_include_directories(avionmesh_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${COMPONENT_DIR}
     ${AVIONMESH_LIB}/include
-    ${ARDUINOJSON_DIR}
 )
 
 target_compile_definitions(avionmesh_tests PRIVATE
@@ -51,7 +73,7 @@ target_compile_definitions(avionmesh_tests PRIVATE
     ARDUINOJSON_USE_LONG_LONG=1
 )
 
-target_link_libraries(avionmesh_tests PRIVATE GTest::gtest_main)
+target_link_libraries(avionmesh_tests PRIVATE GTest::gtest_main ${ARDUINOJSON_TARGET})
 
 include(GoogleTest)
 gtest_discover_tests(avionmesh_tests)

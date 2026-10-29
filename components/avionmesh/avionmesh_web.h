@@ -3,7 +3,6 @@
 #include "esphome/components/web_server_base/web_server_base.h"
 
 #include <atomic>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -11,21 +10,41 @@ namespace avionmesh {
 
 class AvionMeshHub;
 
-struct SseSession {
-    httpd_handle_t hd;
-    std::atomic<int> fd{0};
+class SseSession {
+ public:
+    SseSession(httpd_handle_t hd, int fd);
+
+    bool send(const char *event, const std::string &data);
+    void loop();
+    bool dead() const { return fd_.load() == 0; }
+
     bool sync_pending{true};
+
+    // Public statics used by handle_events to set up the httpd session
     static void destroy(void *ptr);
+    static int nonblocking_send(httpd_handle_t hd, int sockfd, const char *buf, size_t buf_len,
+                                int flags);
+
+ private:
+    httpd_handle_t hd_;
+    std::atomic<int> fd_{0};
+    std::string send_buf_;
+    size_t bytes_sent_{0};
+    uint16_t consecutive_failures_{0};
+    static constexpr uint16_t MAX_FAILURES = 2500;  // ~20 s at 125 Hz
 };
 
 class AvionMeshWebHandler : public AsyncWebHandler {
-    static constexpr size_t MAX_SSE_SESSIONS = 2;
+    static constexpr size_t MAX_SSE_SESSIONS = 3;
 
  public:
     AvionMeshWebHandler(AvionMeshHub *hub) : hub_(hub) {}
 
     bool canHandle(AsyncWebServerRequest *request) const override;
     void handleRequest(AsyncWebServerRequest *request) override;
+    // ESPHome >= 2026.x delivers JSON POST bodies here before handleRequest()
+    void handleBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index,
+                    size_t total) override;
 
     void send_event(const char *event, const std::string &data);
     void sse_loop();
@@ -34,18 +53,17 @@ class AvionMeshWebHandler : public AsyncWebHandler {
  protected:
     AvionMeshHub *hub_;
 
-    std::mutex sse_mutex_;
     std::vector<SseSession *> sse_sessions_;
     uint32_t last_state_read_ms_{0};
 
     std::string read_body(AsyncWebServerRequest *request);
+    std::string body_buf_;
+    bool body_received_{false};
+    bool body_too_big_{false};
 
-    void send_event_to(SseSession *session, const char *event, const std::string &data);
     void send_initial_sync(SseSession *session);
 
     void handle_index(AsyncWebServerRequest *request);
-    void handle_style(AsyncWebServerRequest *request);
-    void handle_script(AsyncWebServerRequest *request);
     void handle_events(AsyncWebServerRequest *request);
     void handle_discover_mesh_post(AsyncWebServerRequest *request);
     void handle_scan_unassociated_post(AsyncWebServerRequest *request);
@@ -61,6 +79,7 @@ class AvionMeshWebHandler : public AsyncWebHandler {
     void handle_import(AsyncWebServerRequest *request);
     void handle_set_mqtt_exposed(AsyncWebServerRequest *request);
     void handle_save(AsyncWebServerRequest *request);
+    void handle_export(AsyncWebServerRequest *request);
     void handle_set_passphrase(AsyncWebServerRequest *request);
     void handle_generate_passphrase(AsyncWebServerRequest *request);
     void handle_factory_reset(AsyncWebServerRequest *request);

@@ -33,10 +33,10 @@ async function postJson(path, data) {
   return api(path, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
 }
 
-function showMsg(el, text, ok) {
+function showMsg(el, text, ok, sticky) {
   el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
   el.textContent = text;
-  setTimeout(() => el.textContent = '', 5000);
+  if (!sticky) setTimeout(() => el.textContent = '', 5000);
 }
 
 function productSelect(selected) {
@@ -595,8 +595,39 @@ async function setPassphrase() {
 async function generatePassphrase() {
   const res = await postJson('generate_passphrase', {});
   const msgEl = $('setupMsg');
-  if (res.passphrase) showMsg(msgEl, 'Generated: ' + res.passphrase, true);
-  else showMsg(msgEl, 'Failed to generate', false);
+  if (!res.passphrase) { showMsg(msgEl, 'Failed to generate', false); return; }
+  const field = $('generatedPassphrase');
+  field.value = res.passphrase;
+  $('generatedRow').style.display = '';
+  field.select();
+  showMsg(msgEl, 'New passphrase generated and saved. Copy it now — generating again re-keys the mesh and orphans already-claimed devices.', true, true);
+}
+
+async function copyGenerated() {
+  const field = $('generatedPassphrase');
+  field.select();
+  try {
+    await navigator.clipboard.writeText(field.value);
+    showMsg($('setupMsg'), 'Copied to clipboard', true);
+  } catch (e) {
+    document.execCommand('copy');
+    showMsg($('setupMsg'), 'Copied (select the field and press Ctrl+C if it is still selected)', true);
+  }
+}
+
+async function exportBackup() {
+  const res = await fetch('api/export');
+  if (!res.ok) { showMsg($('setupMsg'), 'Export failed', false); return; }
+  const text = await res.text();
+  const blob = new Blob([text], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'avionmesh-backup.json';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+  showMsg($('setupMsg'), 'Backup downloaded — it contains your mesh passphrase, store it somewhere safe', true, true);
 }
 
 async function factoryReset() {

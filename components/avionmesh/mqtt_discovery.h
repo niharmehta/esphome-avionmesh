@@ -14,9 +14,8 @@ class MqttDiscovery {
         publish_fn_ = std::move(fn);
     }
 
-    void publish_light(uint16_t avion_id, const std::string &name,
-                       bool has_brightness, bool has_color_temp,
-                       const std::string &product_name = "");
+    void publish_light(uint16_t avion_id, const std::string &name, bool has_brightness,
+                       bool has_color_temp, const std::string &product_name = "");
 
     void remove_light(uint16_t avion_id);
 

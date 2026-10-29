@@ -1,0 +1,56 @@
+esphome:
+  name: avionmesh
+  compile_process_limit: 3
+  min_version: "2026.9.0"
+
+esp32:
+  variant: ESP32
+  framework:
+    type: esp-idf
+
+web_server:
+  local: true
+  version: 3
+#  auth:
+#    username: !secret web_server_username
+#    password: !secret web_server_password
+
+logger:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk:
+    pin: GPIO17
+    mode: CLK_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+  # use_address: 10.0.0.132
+
+#external_components:
+#  - source: github://oyvindkinsey/esphome-avionmesh
+#    components: [avionmesh]
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [avionmesh]
+
+mqtt:
+  broker: 192.0.2.1
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  port: 1883
+
+avionmesh:
+  passphrase: !secret avionmesh_passphrase

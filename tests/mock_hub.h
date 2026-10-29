@@ -10,7 +10,7 @@
 namespace avionmesh {
 
 class TestHub : public AvionMeshHub {
-public:
+ public:
     std::vector<Command> mesh_sends;
     std::vector<std::tuple<std::string, std::string, bool>> mqtt_publishes;
     std::map<std::string, std::function<void(const std::string &, const std::string &)>> mqtt_subs;
@@ -39,10 +39,17 @@ public:
     // Verb=Write(0), Noun=Color(0x1D), value_bytes[2..3]=kelvin big-endian
     void inject_color_temp(uint16_t device_id, uint16_t kelvin) {
         uint8_t payload[] = {
-            0x00, 0x1D, 0x00, 0x00, 0x00, 0x00,
+            0x00,
+            0x1D,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
             static_cast<uint8_t>(kelvin >> 8),
             static_cast<uint8_t>(kelvin & 0xFF),
-            0x00, 0x00, 0x00,
+            0x00,
+            0x00,
+            0x00,
         };
         on_mesh_rx(device_id, device_id, 0x73, payload, sizeof(payload));
     }
@@ -72,17 +79,17 @@ public:
         sse_events.clear();
     }
 
-protected:
-    void do_mesh_send(const Command &cmd) override {
-        mesh_sends.push_back(cmd);
-    }
+ protected:
+    void do_mesh_send(const Command &cmd) override { mesh_sends.push_back(cmd); }
 
-    void do_mqtt_publish(const std::string &topic, const std::string &payload, bool retain) override {
+    void do_mqtt_publish(const std::string &topic, const std::string &payload,
+                         bool retain) override {
         mqtt_publishes.emplace_back(topic, payload, retain);
     }
 
-    void do_mqtt_subscribe(const std::string &topic,
-                           std::function<void(const std::string &, const std::string &)> cb) override {
+    void do_mqtt_subscribe(
+        const std::string &topic,
+        std::function<void(const std::string &, const std::string &)> cb) override {
         mqtt_subs[topic] = std::move(cb);
     }
 
